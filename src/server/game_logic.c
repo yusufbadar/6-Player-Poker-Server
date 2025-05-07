@@ -122,22 +122,28 @@ int server_bet(game_state_t *g) {
 // Returns 1 if all bets are the same among active players
 int check_betting_end(game_state_t *g)
 {
+    int active_players = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (g->current_bets[p] != g->highest_bet)
-                return 0;
-        }
+        if (g->player_status[p] == PLAYER_ACTIVE)
+            active_players++;
     }
 
-    int next = (g->current_player + 1) % MAX_PLAYERS;
+    if (active_players <= 1)
+        return 1;
+
+    int current = g->current_player;
+    int next = (current + 1) % MAX_PLAERS;
+
     while (g->player_status[next] != PLAYER_ACTIVE) {
         next = (next + 1) % MAX_PLAYERS;
-        if (next == g->current_player)
+        if (next == current)
             break;
     }
 
-    if (next != g->dealer_player)
-        return 0;
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        if (g->player_status[i] == PLAYER_ACTIVE && g->current_bets[i] != g->highest_bet)
+            return 0;
+    }
 
     return 1;
 }
