@@ -9,6 +9,9 @@
 #include "client_action_handler.h"
 #include "game_logic.h"
 
+extern int has_acted[MAX_PLAYERS];
+extern int last_raiser;
+
 //Feel free to add your own code. I stripped out most of our solution functions but I left some "breadcrumbs" for anyone lost
 
 // for debugging
@@ -118,34 +121,19 @@ void server_deal(game_state_t *g)
 int server_bet(game_state_t *g) { 
     return check_betting_end(g); 
 }
-
-// Returns 1 if all bets are the same among active players
 int check_betting_end(game_state_t *g)
 {
-    int active_players = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE)
-            active_players++;
+        if (g->player_status[p] == PLAYER_ACTIVE) {
+            if (g->current_bets[p] != g->highest_bet || !has_acted[p]) {
+                return 0;
+            }
+        }
     }
-
-    if (active_players <= 1)
-        return 1;
-
-    int current = g->current_player;
-    int next = (current + 1) % MAX_PLAYERS;
-
-    while (g->player_status[next] != PLAYER_ACTIVE) {
-        next = (next + 1) % MAX_PLAYERS;
-        if (next == current)
-            break;
-    }
-
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        if (g->player_status[i] == PLAYER_ACTIVE && g->current_bets[i] != g->highest_bet)
-            return 0;
-    }
-
-    return 1;
+    int stop_at = (last_raiser == -1)
+                    ? g->dealer_player
+                    : (last_raiser + 1) % MAX_PLAYERS;
+    return g->current_player == stop_at;
 }
 
 void server_community(game_state_t *g)
