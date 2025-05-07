@@ -15,8 +15,7 @@
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
 
-int has_acted[MAX_PLAYERS] = {0};
-int last_raiser = -1;
+
 typedef struct {
     int socket;
     struct sockaddr_in address;
@@ -156,11 +155,9 @@ int main(int argc, char **argv)
                         build_info_packet(&game, s, &info);
                         send(game.sockets[s], &info, sizeof(info), 0);
                     }
-                    game.current_player = (pid + 1) % MAX_PLAYERS;
 
                 } else {
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-                    game.current_player = (pid + 1) % MAX_PLAYERS;
                 }
             }
 
