@@ -15,6 +15,9 @@
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
 
+static int has_acted[MAX_PLAYERS] = {0};
+static int last_raiser = -1;
+
 typedef struct {
     int socket;
     struct sockaddr_in address;
