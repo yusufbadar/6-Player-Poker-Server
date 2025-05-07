@@ -61,17 +61,17 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 
 void reset_game_state(game_state_t *game)
 {
+    round_stage_t prev_stage = game->round_stage;
+
     shuffle_deck(game->deck);
-    game->next_card   = 0;
-    game->round_stage = ROUND_INIT;
-    game->pot_size    = 0;
-    game->highest_bet = 0;
+    game->next_card    = 0;
+    game->round_stage  = ROUND_INIT;
+    game->pot_size     = 0;
+    game->highest_bet  = 0;
 
-    if (game->dealer_player != 0 || game->round_stage   != ROUND_JOIN)
-    {
-        game->dealer_player = (game->dealer_player + 1) % MAX_PLAYERS;
+    if (prev_stage != ROUND_JOIN) {
+        game->dealer_player  = (game->dealer_player + 1) % MAX_PLAYERS;
     }
-
     game->current_player = (game->dealer_player + 1) % MAX_PLAYERS;
 
     for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
@@ -119,17 +119,15 @@ int server_bet(game_state_t *g) {
 }
 
 // Returns 1 if all bets are the same among active players
-int check_betting_end(game_state_t *g) {
-    if (g->current_player != g->dealer_player)
-        return 0;
-
-    int reference = -1;
+int check_betting_end(game_state_t *g)
+{
+    int ref = -1;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (reference == -1)
-                reference = g->current_bets[p];
+            if (ref == -1)
+                ref = g->current_bets[p];
 
-            if (g->current_bets[p] != reference)
+            if (g->current_bets[p] != ref)
                 return 0;
         }
     }
