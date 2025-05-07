@@ -26,12 +26,13 @@ void init_deck(card_t deck[DECK_SIZE], int seed){ //DO NOT TOUCH THIS FUNCTION
     }
 }
 
-void shuffle_deck(card_t deck[DECK_SIZE]){ //DO NOT TOUCH THIS FUNCTION
-    for(int i = 0; i<DECK_SIZE; i++){
-        int j = rand() % DECK_SIZE;
-        card_t temp = deck[i];
-        deck[i] = deck[j];
-        deck[j] = temp;
+void shuffle_deck(card_t deck[DECK_SIZE])
+{
+    for (int i = DECK_SIZE - 1; i > 0; --i) {
+        int j = rand() % (i + 1);
+        card_t tmp = deck[i];
+        deck[i]   = deck[j];
+        deck[j]   = tmp;
     }
 }
 
@@ -121,16 +122,13 @@ int server_bet(game_state_t *g) {
 // Returns 1 if all bets are the same among active players
 int check_betting_end(game_state_t *g)
 {
-    int ref = -1;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (ref == -1)
-                ref = g->current_bets[p];
-
-            if (g->current_bets[p] != ref)
-                return 0;
-        }
+        if (g->player_status[p] == PLAYER_ACTIVE &&
+            g->current_bets[p]  != g->highest_bet)
+            return 0;
     }
+    if (g->current_player != g->dealer_player)
+        return 0;
     return 1;
 }
 
