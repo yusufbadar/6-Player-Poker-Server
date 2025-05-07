@@ -15,9 +15,8 @@
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
 
-static int has_acted[MAX_PLAYERS] = {0};
-static int last_raiser = -1;
-
+int has_acted[MAX_PLAYERS] = {0};
+int last_raiser = -1;
 typedef struct {
     int socket;
     struct sockaddr_in address;
@@ -119,7 +118,8 @@ int main(int argc, char **argv)
 
         reset_game_state(&game);
         server_deal(&game);
-
+        memset(has_acted, 0, sizeof(has_acted));
+        last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
             if (game.player_status[s] == PLAYER_LEFT) continue;
             server_packet_t ip; build_info_packet(&game, s, &ip);
@@ -144,7 +144,10 @@ int main(int argc, char **argv)
                 server_packet_t acknack;
                 if (handle_client_action(&game, pid, &in, &acknack) == 0 &&
                     acknack.packet_type == ACK) {
-
+                    has_acted[pid] = 1;
+                    if (in.packet_type == RAISE) {
+                        last_raiser = pid;
+                    }
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
 
                     for (int s = 0; s < NUM_PORTS; ++s) {
@@ -178,6 +181,8 @@ int main(int argc, char **argv)
 
             if (game.round_stage == ROUND_RIVER) break;
             server_community(&game);
+            memset(has_acted, 0, sizeof(has_acted));
+            last_raiser = -1;
             for (int s = 0; s < NUM_PORTS; ++s) {
                 if (game.player_status[s] == PLAYER_LEFT) continue;
                 server_packet_t info; build_info_packet(&game, s, &info);
