@@ -123,20 +123,15 @@ int server_bet(game_state_t *g) {
 }
 int check_betting_end(game_state_t *g)
 {
-    int active_cnt = 0;
-    for (int p = 0; p < MAX_PLAYERS; ++p)
-        if (g->player_status[p] == PLAYER_ACTIVE)
-            ++active_cnt;
-    if (active_cnt <= 1)
-        return 1;
-
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE &&
-            g->current_bets[p] != g->highest_bet)
-            return 0;
+        if (g->player_status[p] == PLAYER_ACTIVE) {
+            if (g->current_bets[p] != g->highest_bet)
+                return 0;
+            if (!has_acted[p])
+                return 0;
+        }
     }
-
-    return (g->current_player == g->dealer_player);
+    return 1;
 }
 
 void server_community(game_state_t *g)
