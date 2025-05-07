@@ -44,6 +44,7 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
     memset(game, 0, sizeof(game_state_t));
     init_deck(game->deck, random_seed);
+    shuffle_deck(game->deck);
 
     game->next_card = 0;
     game->round_stage = ROUND_JOIN;
