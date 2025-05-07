@@ -44,6 +44,7 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
     memset(game, 0, sizeof(game_state_t));
     init_deck(game->deck, random_seed);
+    shuffle_deck(game->deck);
 
     game->next_card = 0;
     game->round_stage = ROUND_JOIN;
@@ -123,21 +124,14 @@ int server_bet(game_state_t *g) {
 int check_betting_end(game_state_t *g)
 {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE &&
-            g->current_bets[p] != g->highest_bet)
-            return 0;
-    }
-    int stop_seat;
-    if (g->highest_bet == 0) {
-        for (int p = 0; p < MAX_PLAYERS; ++p)
-            if (g->player_status[p] == PLAYER_ACTIVE && !has_acted[p])
+        if (g->player_status[p] == PLAYER_ACTIVE) {
+            if (g->current_bets[p] != g->highest_bet)
                 return 0;
-        stop_seat = g->dealer_player;
-    } else {
-        stop_seat = (last_raiser + 1) % MAX_PLAYERS;
+            if (!has_acted[p])
+                return 0;
+        }
     }
-
-    return g->current_player == stop_seat;
+    return 1;
 }
 
 void server_community(game_state_t *g)
