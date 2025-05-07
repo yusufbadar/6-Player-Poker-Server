@@ -120,20 +120,16 @@ void server_deal(game_state_t *g)
 int server_bet(game_state_t *g) { 
     return check_betting_end(g); 
 }
-int check_betting_end(game_state_t *g) {
+int check_betting_end(game_state_t *g)
+{
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE &&
-            g->current_bets[p] != g->highest_bet)
-            return 0;
+        if (g->player_status[p] == PLAYER_ACTIVE) {
+            if (g->current_bets[p] != g->highest_bet)
+                return 0;
+            if (!has_acted[p])
+                return 0;
+        }
     }
-
-    int next = (g->current_player + 1) % MAX_PLAYERS;
-    while (g->player_status[next] != PLAYER_ACTIVE) {
-        next = (next + 1) % MAX_PLAYERS;
-        if (next == g->current_player) break;
-    }
-    if (next != g->dealer_player)
-        return 0;
     return 1;
 }
 
