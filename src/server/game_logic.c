@@ -132,7 +132,7 @@ int check_betting_end(game_state_t *g)
         return 1;
 
     int current = g->current_player;
-    int next = (current + 1) % MAX_PLAERS;
+    int next = (current + 1) % MAX_PLAYERS;
 
     while (g->player_status[next] != PLAYER_ACTIVE) {
         next = (next + 1) % MAX_PLAYERS;
