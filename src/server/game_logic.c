@@ -61,21 +61,28 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
     game->dealer_player = 0;
     game->current_player = 1;
 }
-
+static inline player_id_t next_active_player(game_state_t *g, player_id_t start)
+{
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        player_id_t p = (start + i) % MAX_PLAYERS;
+        if (g->player_status[p] == PLAYER_ACTIVE) return p;
+    }
+    return -1;
+}
 void reset_game_state(game_state_t *game)
 {
     round_stage_t prev_stage = game->round_stage;
 
     shuffle_deck(game->deck);
-    game->next_card    = 0;
-    game->round_stage  = ROUND_INIT;
-    game->pot_size     = 0;
+    game->next_card = 0;
+    game->round_stage = ROUND_INIT;
+    game->pot_size = 0;
     game->highest_bet  = 0;
 
     if (prev_stage != ROUND_JOIN) {
         game->dealer_player  = (game->dealer_player + 1) % MAX_PLAYERS;
     }
-    game->current_player = (game->dealer_player + 1) % MAX_PLAYERS;
+    game->current_player = next_active_player(game, (game->dealer_player + 1) % MAX_PLAYERS);
 
     for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
         game->community_cards[i] = NOCARD;
@@ -159,10 +166,9 @@ void server_community(game_state_t *g)
             g->round_stage = ROUND_RIVER; break;
         default: break;
     }
-
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof(g->current_bets));
-    g->current_player = (g->dealer_player + 1) % MAX_PLAYERS;
+    next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
 
 void server_end(game_state_t *game) {

@@ -153,6 +153,7 @@ int main(int argc, char **argv)
                 if (recv_full(game.sockets[pid], &in, sizeof(in)) == -1) {
                     game.player_status[pid] = PLAYER_LEFT;
                     close(game.sockets[pid]);
+                    game.current_player = next_active_player(&game, (pid + 1) % MAX_PLAYERS);
                     continue;
                 }
 
