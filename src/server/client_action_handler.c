@@ -5,6 +5,8 @@
 #include "client_action_handler.h"
 #include "game_logic.h"
 
+extern int has_acted[MAX_PLAYERS];
+
 /**
  * @brief Processes packet from client and generates a server response packet.
  * 
