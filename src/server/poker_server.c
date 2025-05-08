@@ -171,7 +171,6 @@ int main(int argc, char **argv)
                         build_info_packet(&game, s, &info);
                         send(game.sockets[s], &info, sizeof(info), 0);
                     }
-                    game.current_player = (pid + 1) % MAX_PLAYERS;
                 } else {
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
                 }
