@@ -83,7 +83,14 @@ int wait_for_ready(void) {
 
     return ready_cnt;
 }
-
+static inline player_id_t next_active_player(game_state_t *g, player_id_t start)
+{
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        player_id_t p = (start + i) % MAX_PLAYERS;
+        if (g->player_status[p] == PLAYER_ACTIVE) return p;
+    }
+    return -1;
+}
 int main(int argc, char **argv)
 {
     for (int i = 0; i < NUM_PORTS; ++i) {
