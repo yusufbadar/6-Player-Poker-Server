@@ -14,6 +14,8 @@
 #define NUM_PORTS 6
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
+#define MAX_PLAYERS 6
+
 
 int has_acted[MAX_PLAYERS] = {0};
 int last_raiser = -1;
