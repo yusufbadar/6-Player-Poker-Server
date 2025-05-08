@@ -16,7 +16,6 @@
 #define BACKLOG 4
 #define MAX_PLAYERS 6
 
-
 int has_acted[MAX_PLAYERS] = {0};
 int last_raiser = -1;
 typedef struct {
