@@ -105,8 +105,10 @@ int server_ready(game_state_t *game) {
 //This was our dealing function with some of the code removed (I left the dealing so we have the same logic)
 void server_deal(game_state_t *g)
 {
-    int first = (g->dealer_player + 1) % MAX_PLAYERS;
-
+    int first = -1;
+     for (int p = 0; p < MAX_PLAYERS; ++p) {
+         if (g->player_status[p] == PLAYER_ACTIVE) { first = p; break; }
+     }
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         int seat = (first + i) % MAX_PLAYERS;
         if (g->player_status[seat] == PLAYER_ACTIVE)
