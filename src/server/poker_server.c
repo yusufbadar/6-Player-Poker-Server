@@ -42,45 +42,45 @@ static int recv_full(int fd, void *buf, size_t len)
     }
     return 0;
 }
-int wait_for_ready(void) {
+int wait_for_ready(void)
+{
     int ready_cnt = 0;
-    int responded_cnt = 0;
-    int responded[NUM_PORTS] = {0};
+    int ready_flags[NUM_PORTS] = {0};
 
-    while (responded_cnt < NUM_PORTS) {
-        fd_set rfds; 
-        FD_ZERO(&rfds);
+    while (ready_cnt < NUM_PORTS) {
+        fd_set rfds; FD_ZERO(&rfds);
         int maxfd = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
-            if (game.player_status[s] != PLAYER_LEFT && !responded[s]) {
+            if (game.player_status[s] == PLAYER_ACTIVE && !ready_flags[s]) {
                 FD_SET(game.sockets[s], &rfds);
                 if (game.sockets[s] > maxfd) maxfd = game.sockets[s];
             }
         }
-
-        if (select(maxfd + 1, &rfds, NULL, NULL, NULL) < 0)
-            kill("select");
+        if (select(maxfd + 1, &rfds, NULL, NULL, NULL) < 0) kill("select");
 
         for (int s = 0; s < NUM_PORTS; ++s) {
-            if (!responded[s] && FD_ISSET(game.sockets[s], &rfds)) {
+            if (!ready_flags[s] && FD_ISSET(game.sockets[s], &rfds)) {
                 client_packet_t pkt;
                 if (recv_full(game.sockets[s], &pkt, sizeof(pkt)) == -1) {
-                    // they disconnected in error
                     game.player_status[s] = PLAYER_LEFT;
                     close(game.sockets[s]);
-                } else if (pkt.packet_type == READY) {
-                    ready_cnt++;
-                } else if (pkt.packet_type == LEAVE) {
-                    // they explicitly left
-                    game.player_status[s] = PLAYER_LEFT;
-                    close(game.sockets[s]);
+                    ready_flags[s] = 1;
+                    ++ready_cnt;
+                    continue;
                 }
-                responded[s] = 1;
-                responded_cnt++;
+                if (pkt.packet_type == READY) {
+                    ready_flags[s] = 1;
+                    ++ready_cnt;
+                }
+                else if (pkt.packet_type == LEAVE) {
+                    game.player_status[s] = PLAYER_LEFT;
+                    close(game.sockets[s]);
+                    ready_flags[s] = 1;
+                    ++ready_cnt;
+                }
             }
         }
     }
-
     return ready_cnt;
 }
 
