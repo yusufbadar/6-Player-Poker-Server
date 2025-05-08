@@ -14,7 +14,7 @@
 #define NUM_PORTS 6
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
-#define MAX_PLAYERS 7
+#define MAX_PLAYERS 6
 
 
 int has_acted[MAX_PLAYERS] = {0};
@@ -89,6 +89,7 @@ int main(int argc, char **argv)
         server_fds[i] = fd;
     }
 
+    /* 2. game init */
     int seed = (argc == 2) ? atoi(argv[1]) : 0;
     init_game_state(&game, 100, seed);
 
