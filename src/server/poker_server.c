@@ -47,7 +47,7 @@ int wait_for_ready(void)
     int ready_cnt = 0;
     int ready_flags[NUM_PORTS] = {0};
 
-    while (ready_cnt < 4) {
+    while (ready_cnt < NUM_PORTS) {
         fd_set rfds; FD_ZERO(&rfds);
         int maxfd = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {

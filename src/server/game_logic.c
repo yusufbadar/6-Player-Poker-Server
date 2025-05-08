@@ -35,7 +35,7 @@ void shuffle_deck(card_t deck[DECK_SIZE])
         int j = rand() % (i + 1);
         card_t tmp = deck[i];
         deck[i]   = deck[j];
-        deck[j]   = tmp;
+        deck[j] = tmp;
     }
 }
 
