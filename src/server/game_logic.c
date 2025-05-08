@@ -120,7 +120,18 @@ void server_deal(game_state_t *g)
         if (g->player_status[seat] == PLAYER_ACTIVE)
             g->player_hands[seat][0] = g->deck[g->next_card++];
     }
-
+     for (int p = 0; p < MAX_PLAYERS; ++p) {
+         if (g->player_status[p] == PLAYER_ACTIVE) { first = p; break; }
+     }
+ 
+     /* give BOTH cards before moving on */
+     for (int i = 0; i < MAX_PLAYERS; ++i) {
+         int seat = (first + i) % MAX_PLAYERS;
+         if (g->player_status[seat] != PLAYER_ACTIVE) continue;
+ 
+         g->player_hands[seat][0] = g->deck[g->next_card++];
+         g->player_hands[seat][1] = g->deck[g->next_card++];
+     }
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         int seat = (first + i) % MAX_PLAYERS;
         if (g->player_status[seat] == PLAYER_ACTIVE)
@@ -167,8 +178,7 @@ void server_community(game_state_t *g)
     }
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof(g->current_bets));
-    next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
-}
+    g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);}
 
 void server_end(game_state_t *game) {
     //This function sends the end packet
