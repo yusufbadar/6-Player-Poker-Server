@@ -32,7 +32,7 @@ void init_deck(card_t deck[DECK_SIZE], int seed){ //DO NOT TOUCH THIS FUNCTION
 void shuffle_deck(card_t deck[DECK_SIZE])
 {
     for (int i = 0; i < DECK_SIZE; ++i) {
-        int j = rand() % DECK_SIZE;
+        int j = rand() % (i + 1);
         card_t tmp = deck[i];
         deck[i]   = deck[j];
         deck[j]   = tmp;
