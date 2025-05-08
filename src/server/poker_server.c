@@ -64,7 +64,12 @@ int wait_for_ready(void)
                 if (recv_full(game.sockets[s], &pkt, sizeof(pkt)) == -1)
                     { game.player_status[s] = PLAYER_LEFT; close(game.sockets[s]); continue; }
                 if (pkt.packet_type == READY) { ready_flags[s] = 1; ++ready_cnt; }
-                else if (pkt.packet_type == LEAVE) { game.player_status[s] = PLAYER_LEFT; close(game.sockets[s]); }
+                else if (pkt.packet_type == LEAVE) { 
+                    game.player_status[s] = PLAYER_LEFT;
+                    close(game.sockets[s]);
+                    ready_flags[s] = 1;
+                    ++ready_cnt;
+                }
             }
         }
     }
