@@ -14,7 +14,7 @@
 #define NUM_PORTS 6
 #define BUFFER_SIZE 1024
 #define BACKLOG 4
-#define MAX_PLAYERS 6
+#define MAX_PLAYERS 7
 
 
 int has_acted[MAX_PLAYERS] = {0};
@@ -48,7 +48,7 @@ int wait_for_ready(void)
     int ready_cnt = 0;
     int ready_flags[NUM_PORTS] = {0};
 
-    while (ready_cnt < 4) {
+    while (ready_cnt < 6) {
         fd_set rfds; FD_ZERO(&rfds);
         int maxfd = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
@@ -89,7 +89,6 @@ int main(int argc, char **argv)
         server_fds[i] = fd;
     }
 
-    /* 2. game init */
     int seed = (argc == 2) ? atoi(argv[1]) : 0;
     init_game_state(&game, 100, seed);
 
