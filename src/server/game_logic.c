@@ -105,18 +105,24 @@ int server_ready(game_state_t *game) {
 //This was our dealing function with some of the code removed (I left the dealing so we have the same logic)
 void server_deal(game_state_t *g)
 {
-    for (int seat = 0; seat < MAX_PLAYERS; ++seat) {
-        if (g->player_status[seat] == PLAYER_ACTIVE) {
+    int first = (g->dealer_player + 1) % MAX_PLAYERS;
+
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        int seat = (first + i) % MAX_PLAYERS;
+        if (g->player_status[seat] == PLAYER_ACTIVE)
             g->player_hands[seat][0] = g->deck[g->next_card++];
-            g->player_hands[seat][1] = g->deck[g->next_card++];
-        }
     }
 
-    g->round_stage  = ROUND_PREFLOP;
-    g->highest_bet  = 0;
-    memset(g->current_bets, 0, sizeof(g->current_bets));
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        int seat = (first + i) % MAX_PLAYERS;
+        if (g->player_status[seat] == PLAYER_ACTIVE)
+            g->player_hands[seat][1] = g->deck[g->next_card++];
+    }
 
-    memset(has_acted, 0, sizeof(has_acted));
+    g->round_stage = ROUND_PREFLOP;
+    g->highest_bet = 0;
+    memset(g->current_bets, 0, sizeof(g->current_bets));
+    memset(has_acted,   0, sizeof(has_acted));
     last_raiser = -1;
 }
 
