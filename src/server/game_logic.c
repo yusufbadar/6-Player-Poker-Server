@@ -60,7 +60,7 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
     game->dealer_player = 0;
     game->current_player = 1;
 }
-static inline player_id_t next_active_player(game_state_t *g, player_id_t start)
+player_id_t next_active_player(game_state_t *g, player_id_t start)
 {
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         player_id_t p = (start + i) % MAX_PLAYERS;

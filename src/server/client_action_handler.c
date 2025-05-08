@@ -71,7 +71,11 @@ break;
 case FOLD:
     g->player_status[pid] = PLAYER_FOLDED;
     has_acted[pid] = 1;
-    g->current_player = next_active_player(g, (pid + 1) % MAX_PLAYERS);
+
+    player_id_t nxt = (pid + 1) % MAX_PLAYERS;
+    while (nxt != pid && g->player_status[nxt] != PLAYER_ACTIVE)
+        nxt = (nxt + 1) % MAX_PLAYERS;
+    g->current_player = nxt;
     break;
 default:
 out->packet_type = NACK; return -1;
