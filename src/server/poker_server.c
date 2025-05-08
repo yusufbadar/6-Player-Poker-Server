@@ -156,6 +156,9 @@ int main(int argc, char **argv)
                         build_info_packet(&game, s, &info);
                         send(game.sockets[s], &info, sizeof(info), 0);
                     }
+                    do {
+                        game.current_player = (game.current_player + 1) % MAX_PLAYERS;
+                    } while (game.player_status[game.current_player] != PLAYER_ACTIVE);
                 } else {
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
                 }
