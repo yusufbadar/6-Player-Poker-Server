@@ -66,6 +66,7 @@ break;
 
 case FOLD:
 g->player_status[pid] = PLAYER_FOLDED;
+has_acted[pid] = 1;
 break;
 
 default:
