@@ -130,35 +130,41 @@ int main(int argc, char **argv)
             while (!check_betting_end(&game)) {
                 player_id_t pid = game.current_player;
                 if (game.player_status[pid] != PLAYER_ACTIVE) {
+                    // skip anyone who folded or left
                     game.current_player = (pid + 1) % MAX_PLAYERS;
                     continue;
                 }
-
+    
                 client_packet_t in;
                 if (recv_full(game.sockets[pid], &in, sizeof(in)) == -1) {
                     game.player_status[pid] = PLAYER_LEFT;
                     close(game.sockets[pid]);
                     continue;
                 }
-
+    
                 server_packet_t acknack;
                 if (handle_client_action(&game, pid, &in, &acknack) == 0 &&
                     acknack.packet_type == ACK) {
+    
                     has_acted[pid] = 1;
                     if (in.packet_type == RAISE) {
                         last_raiser = pid;
                     }
+    
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-
+    
+                    // broadcast updated INFO to everyone
                     for (int s = 0; s < NUM_PORTS; ++s) {
                         if (game.player_status[s] == PLAYER_LEFT) continue;
                         server_packet_t info;
                         build_info_packet(&game, s, &info);
                         send(game.sockets[s], &info, sizeof(info), 0);
                     }
+    
                     do {
                         game.current_player = (game.current_player + 1) % MAX_PLAYERS;
                     } while (game.player_status[game.current_player] != PLAYER_ACTIVE);
+    
                 } else {
                     send(game.sockets[pid], &acknack, sizeof(acknack), 0);
                 }
