@@ -6,6 +6,8 @@
 #include "game_logic.h"
 
 extern int has_acted[MAX_PLAYERS];
+extern player_id_t next_active_player(game_state_t *g, player_id_t start);
+
 
 /**
  * @brief Processes packet from client and generates a server response packet.
@@ -67,10 +69,10 @@ g->highest_bet = new_bet;
 break;
 
 case FOLD:
-g->player_status[pid] = PLAYER_FOLDED;
-has_acted[pid] = 1;
-break;
-
+    g->player_status[pid] = PLAYER_FOLDED;
+    has_acted[pid] = 1;
+    g->current_player = next_active_player(g, (pid + 1) % MAX_PLAYERS);
+    break;
 default:
 out->packet_type = NACK; return -1;
 }
