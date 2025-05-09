@@ -143,6 +143,12 @@ int main(int argc, char **argv)
                 game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
+        for (int p = 0; p < MAX_PLAYERS; ++p) {
+            if (game.player_status[p] == PLAYER_ACTIVE) {
+                game.player_hands[p][0] = game.deck[game.next_card++];
+                game.player_hands[p][1] = game.deck[game.next_card++];
+            }
+        }
         memset(has_acted, 0, sizeof(has_acted));
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
