@@ -160,7 +160,6 @@ void build_end_packet(game_state_t *game, player_id_t winner, server_packet_t *o
 
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         p->player_stacks[i] = game->player_stacks[i];
-        /* same mapping for END‐packet statuses */
         if (game->player_status[i] == PLAYER_ACTIVE ||
             game->player_status[i] == PLAYER_ALLIN) {
             p->player_status[i] = 1;
