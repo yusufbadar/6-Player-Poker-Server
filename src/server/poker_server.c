@@ -142,6 +142,13 @@ int main(int argc, char **argv)
                 game.player_hands[i][1] = game.deck[game.next_card++];
             }
         }
+        server_deal(&game);
+        for (int p = 0; p < MAX_PLAYERS; ++p) {
+            if (game.player_status[p] == PLAYER_ACTIVE) {
+                game.player_hands[p][0] = game.deck[game.next_card++];
+                game.player_hands[p][1] = game.deck[game.next_card++];
+            }
+        }
         memset(has_acted, 0, sizeof(has_acted));
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
@@ -183,16 +190,6 @@ int main(int argc, char **argv)
                     build_info_packet(&game, s, &info);
                     send(game.sockets[s], &info, sizeof(info), 0);
                 }
-            }
-            server_deal(&game);
-            memset(has_acted, 0, sizeof(has_acted));
-            last_raiser = -1;
-            /* broadcast INFO with flop cards */
-            for (int s = 0; s < NUM_PORTS; ++s) {
-                if (game.player_status[s] == PLAYER_LEFT) continue;
-                server_packet_t info;
-                build_info_packet(&game, s, &info);
-                send(game.sockets[s], &info, sizeof(info), 0);
             }
 
             int survivors = 0, surv = -1;

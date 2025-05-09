@@ -126,10 +126,17 @@ void build_info_packet(game_state_t *game, player_id_t pid, server_packet_t *out
     }
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         p->player_stacks[i] = game->player_stacks[i];
-        p->player_bets[i] = game->current_bets[i];
-        p->player_status[i] = to_packet_status(game->player_status[i]);
+        p->player_bets[i]   = game->current_bets[i];
+        /* instructor‐provided mapping */
+        if (game->player_status[i] == PLAYER_ACTIVE ||
+            game->player_status[i] == PLAYER_ALLIN) {
+            p->player_status[i] = 1;
+        } else if (game->player_status[i] == PLAYER_FOLDED) {
+            p->player_status[i] = 0;
+        } else {
+            p->player_status[i] = 2;
+        }
     }
-
     p->pot_size = game->pot_size;
     p->dealer = game->dealer_player;
     p->player_turn = game->current_player;
@@ -153,9 +160,16 @@ void build_end_packet(game_state_t *game, player_id_t winner, server_packet_t *o
 
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         p->player_stacks[i] = game->player_stacks[i];
-        p->player_status[i] = to_packet_status(game->player_status[i]);
+        /* same mapping for END‐packet statuses */
+        if (game->player_status[i] == PLAYER_ACTIVE ||
+            game->player_status[i] == PLAYER_ALLIN) {
+            p->player_status[i] = 1;
+        } else if (game->player_status[i] == PLAYER_FOLDED) {
+            p->player_status[i] = 0;
+        } else {
+            p->player_status[i] = 2;
+        }
     }
-
     p->pot_size = game->pot_size;
     p->dealer = game->dealer_player;
     p->winner = winner;
