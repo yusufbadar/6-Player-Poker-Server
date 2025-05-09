@@ -170,7 +170,7 @@ int main(int argc, char **argv)
                 }
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-                
+
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
@@ -195,7 +195,13 @@ int main(int argc, char **argv)
                 }
                 continue;
             }
-
+            for (int s = 0; s < NUM_PORTS; ++s) {
+                if (game.player_status[s] != PLAYER_LEFT) {
+                    server_packet_t info;
+                    build_info_packet(&game, s, &info);
+                    send(game.sockets[s], &info, sizeof(info), 0);
+                }
+            }
             if (game.round_stage == ROUND_RIVER) break;
             server_community(&game);
             memset(has_acted, 0, sizeof(has_acted));
@@ -213,7 +219,13 @@ int main(int argc, char **argv)
                 if (game.player_status[s] == PLAYER_ACTIVE) { winner = s; break; }
         }
         game.player_stacks[winner] += game.pot_size;
-
+        for (int s = 0; s < NUM_PORTS; ++s){
+            if (game.player_status[s] != PLAYER_LEFT){
+                server_packet_t info;
+                build_info_packet(&game, s, &info);
+                send(game.sockets[s], &info, sizeof(info), 0);
+            }
+        }
         server_packet_t end_pkt; build_end_packet(&game, winner, &end_pkt);
         for (int s = 0; s < NUM_PORTS; ++s){
             if (game.player_status[s] != PLAYER_LEFT){
