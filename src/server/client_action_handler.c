@@ -45,6 +45,7 @@ case CHECK:
         out->packet_type = NACK;
         return -1;
     }
+    has_acted[pid] = 1;
     break;
 
 case CALL:
@@ -83,10 +84,11 @@ case RAISE: {
     }
 
     g->player_stacks[pid] -= cost;
-    g->current_bets[pid]  += cost;
-    g->pot_size           += cost;
+    g->current_bets[pid] += cost;
+    g->pot_size += cost;
 
     g->highest_bet += raise_amt;
+    has_acted[pid] = 1;
     break;
 }
 
