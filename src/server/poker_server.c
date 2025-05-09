@@ -219,13 +219,6 @@ int main(int argc, char **argv)
                 if (game.player_status[s] == PLAYER_ACTIVE) { winner = s; break; }
         }
         game.player_stacks[winner] += game.pot_size;
-        for (int s = 0; s < NUM_PORTS; ++s){
-            if (game.player_status[s] != PLAYER_LEFT){
-                server_packet_t info;
-                build_info_packet(&game, s, &info);
-                send(game.sockets[s], &info, sizeof(info), 0);
-            }
-        }
         server_packet_t end_pkt; build_end_packet(&game, winner, &end_pkt);
         for (int s = 0; s < NUM_PORTS; ++s){
             if (game.player_status[s] != PLAYER_LEFT){
