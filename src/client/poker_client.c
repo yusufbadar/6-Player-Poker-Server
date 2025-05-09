@@ -200,12 +200,34 @@ int recv_packet(server_packet_t *pkt) {
     memcpy(&last_server_packet, pkt, sizeof(server_packet_t));
 
     switch (pkt->packet_type) {
-        case INFO:
-            log_info_packet(&(pkt->info));
-            if (info_handler) {
-                info_handler(&(pkt->info));
-            }
-            break;
+        case INFO: {
+        info_packet_t *info = &pkt->info;
+        log_info("[INFO_PACKET] pot_size=%d, player_turn=%d, dealer=%d, bet_size=%d",
+                 info->pot_size,
+                 info->player_turn,
+                 info->dealer,
+                 info->bet_size);
+        log_info("[INFO_PACKET] Your Cards: %s %s",
+                 card_name(info->player_cards[0]),
+                 card_name(info->player_cards[1]));
+        for (int i = 0; i < 5; ++i) {
+            const char *cname = info->community_cards[i] == NOCARD
+                                ? "NOCARD"
+                                : card_name(info->community_cards[i]);
+            log_info("[INFO_PACKET] Community Card %d: %s", i, cname);
+        }
+
+        for (int p = 0; p < MAX_PLAYERS; ++p) {
+            log_info("[INFO_PACKET] Player %d: stack=%d, bet=%d, status=%d",
+                     p,
+                     info->player_stacks[p],
+                     info->player_bets[p],
+                     info->player_status[p]);
+        }
+
+        if (info_handler) info_handler(info);
+        break;
+    }
         case END:
             log_end_packet(&(pkt->end));
             if (end_handler) {
