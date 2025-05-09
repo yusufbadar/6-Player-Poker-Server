@@ -109,26 +109,12 @@ int server_ready(game_state_t *game) {
 
 void server_deal(game_state_t *g)
 {
-    int first = -1;
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE) {
-            first = p;
-            break;
-        }
-    }
-
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        int seat = (first + i) % MAX_PLAYERS;
-        if (g->player_status[seat] == PLAYER_ACTIVE) {
-            g->player_hands[seat][0] = g->deck[g->next_card++];
-            g->player_hands[seat][1] = g->deck[g->next_card++];
-        }
-    }
-
-    g->round_stage = ROUND_PREFLOP;
-    g->highest_bet = 0;
-    memset(g->current_bets, 0, sizeof(g->current_bets));
-    memset(has_acted, 0, sizeof(has_acted));
+    for (int i = 0; i < 3; ++i)
+        g->community_cards[i] = g->deck[g->next_card++];
+    g->round_stage   = ROUND_FLOP;
+    g->highest_bet   = 0;
+    memset(g->current_bets, 0, sizeof g->current_bets);
+    memset(has_acted,       0, sizeof has_acted);
     last_raiser = -1;
 }
 
