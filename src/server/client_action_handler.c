@@ -36,42 +36,63 @@ if (pid != g->current_player || g->player_status[pid] != PLAYER_ACTIVE) {
 out->packet_type = NACK; return -1;
 }
 
-int cost, new_bet;
+int cost;
+
 switch (in->packet_type) {
+
 case CHECK:
-if (g->highest_bet != g->current_bets[pid]) { out->packet_type = NACK; return -1; }
-break;
+    if (g->highest_bet != g->current_bets[pid]) {
+        out->packet_type = NACK;
+        return -1;
+    }
+    break;
 
 case CALL:
-if (g->highest_bet == 0 || g->current_bets[pid] == g->highest_bet) {
-    out->packet_type = NACK; return -1;
-}
-cost = g->highest_bet - g->current_bets[pid];
-if (g->player_stacks[pid] < cost) { 
-    out->packet_type = NACK; return -1; 
-}
-g->player_stacks[pid] -= cost;
-g->current_bets[pid] += cost;
-g->pot_size += cost;
-break;
+    if (g->highest_bet == 0) {
+        break;
+    }
+    if (g->current_bets[pid] == g->highest_bet) {
+        out->packet_type = NACK;
+        return -1;
+    }
+    cost = g->highest_bet - g->current_bets[pid];
+    if (g->player_stacks[pid] < cost) {
+        out->packet_type = NACK;
+        return -1;
+    }
+    g->player_stacks[pid] -= cost;
+    g->current_bets[pid] += cost;
+    g->pot_size += cost;
+    break;
 
-case RAISE:
-new_bet = in->params[0];
-if (new_bet <= g->highest_bet) { out->packet_type = NACK; return -1; }
-cost = new_bet - g->current_bets[pid];
-if (g->player_stacks[pid] < cost) { out->packet_type = NACK; return -1; }
-g->player_stacks[pid] -= cost;
-g->current_bets[pid] += cost;
-g->pot_size += cost;
-g->highest_bet = new_bet;
-break;
+case RAISE: {
+    int raise_amt = in->params[0];
+    if (raise_amt <= 0) {
+        out->packet_type = NACK;
+        return -1;
+    }
+
+    cost = (g->highest_bet - g->current_bets[pid]) + raise_amt;
+    if (g->player_stacks[pid] < cost) {
+        out->packet_type = NACK;
+        return -1;
+    }
+
+    g->player_stacks[pid] -= cost;
+    g->current_bets[pid]  += cost;
+    g->pot_size           += cost;
+
+    g->highest_bet += raise_amt;
+    break;
+}
 
 case FOLD:
     g->player_status[pid] = PLAYER_FOLDED;
     has_acted[pid] = 1;
     break;
 default:
-out->packet_type = NACK; return -1;
+    out->packet_type = NACK;
+    return -1;
 }
 
 int next = (pid + 1) % MAX_PLAYERS;
