@@ -206,7 +206,7 @@ int main(int argc, char **argv)
                         send(game.sockets[s], &ep, sizeof(ep), 0);
                     }
                 }
-                continue;
+                break;
             }
             if (game.round_stage == ROUND_RIVER) break;
             server_community(&game);
