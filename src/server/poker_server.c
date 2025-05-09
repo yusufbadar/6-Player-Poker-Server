@@ -65,13 +65,11 @@ int wait_for_ready(void) {
             if (!responded[s] && FD_ISSET(game.sockets[s], &rfds)) {
                 client_packet_t pkt;
                 if (recv_full(game.sockets[s], &pkt, sizeof(pkt)) == -1) {
-                    // they disconnected in error
                     game.player_status[s] = PLAYER_LEFT;
                     close(game.sockets[s]);
                 } else if (pkt.packet_type == READY) {
                     ready_cnt++;
                 } else if (pkt.packet_type == LEAVE) {
-                    // they explicitly left
                     game.player_status[s] = PLAYER_LEFT;
                     close(game.sockets[s]);
                 }
@@ -108,7 +106,6 @@ int main(int argc, char **argv)
         server_fds[i] = fd;
     }
 
-    /* 2. game init */
     int seed = (argc == 2) ? atoi(argv[1]) : 0;
     init_game_state(&game, 100, seed);
 
