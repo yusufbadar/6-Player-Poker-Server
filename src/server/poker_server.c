@@ -217,6 +217,7 @@ int main(int argc, char **argv)
             server_packet_t info;
             build_info_packet(&game, s, &info);
             send(game.sockets[s], &info, sizeof(info), 0);
+            }
         }
         for (int s = 0; s < NUM_PORTS; ++s){
             if (game.player_status[s] != PLAYER_LEFT){
