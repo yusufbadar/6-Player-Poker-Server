@@ -142,15 +142,7 @@ int main(int argc, char **argv)
                 game.player_hands[i][1] = game.deck[game.next_card++];
             }
         }
-        server_deal(&game);
-        memset(has_acted, 0, sizeof(has_acted));
-        last_raiser = -1;
-        for (int s = 0; s < NUM_PORTS; ++s) {
-            if (game.player_status[s] == PLAYER_LEFT) continue;
-            server_packet_t ip;
-            build_info_packet(&game, s, &ip);
-            send(game.sockets[s], &ip, sizeof(ip), 0);
-        }
+        
 
         while (1) {
             while (!check_betting_end(&game)) {
@@ -212,7 +204,15 @@ int main(int argc, char **argv)
                 send(game.sockets[s], &info, sizeof(info), 0);
             }
         }
-
+        server_deal(&game);
+        memset(has_acted, 0, sizeof(has_acted));
+        last_raiser = -1;
+        for (int s = 0; s < NUM_PORTS; ++s) {
+            if (game.player_status[s] == PLAYER_LEFT) continue;
+            server_packet_t ip;
+            build_info_packet(&game, s, &ip);
+            send(game.sockets[s], &ip, sizeof(ip), 0);
+        }
         player_id_t winner = find_winner(&game);
         if (winner == -1) {
             for (int s = 0; s < MAX_PLAYERS; ++s)
