@@ -162,9 +162,15 @@ int main(int argc, char **argv)
                 }
 
                 server_packet_t acknack;
-                handle_client_action(&game, pid, &in, &acknack);
-                send(game.sockets[pid], &acknack, sizeof(acknack), 0);
+                if (handle_client_action(&game, pid, &in, &acknack) == 0 &&
+                acknack.packet_type == ACK) {
+                    has_acted[pid] = 1;
+                    if (in.packet_type == RAISE) last_raiser = pid;
+                    game.current_player = next_active_player(&game, (pid + 1) % MAX_PLAYERS);
+                }
 
+                send(game.sockets[pid], &acknack, sizeof(acknack), 0);
+                
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
