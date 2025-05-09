@@ -49,12 +49,15 @@ case CHECK:
 
 case CALL:
     if (g->highest_bet == 0) {
+        has_acted[pid] = 1;
         break;
     }
+
     if (g->current_bets[pid] == g->highest_bet) {
-        out->packet_type = NACK;
-        return -1;
+        has_acted[pid] = 1;
+        break;
     }
+
     cost = g->highest_bet - g->current_bets[pid];
     if (g->player_stacks[pid] < cost) {
         out->packet_type = NACK;
@@ -62,7 +65,8 @@ case CALL:
     }
     g->player_stacks[pid] -= cost;
     g->current_bets[pid] += cost;
-    g->pot_size += cost;
+    g->pot_size          += cost;
+    has_acted[pid] = 1;
     break;
 
 case RAISE: {
