@@ -91,6 +91,8 @@ void log_end_packet(const end_packet_t *end) {
 #define MAX_CONNECTION_ATTEMPT_TIME 7500000000ul
 
 int connect_to_serv(player_id_t player_id) {
+    dup2(STDOUT_FILENO, STDERR_FILENO);
+    
     struct sockaddr_in serv_addr;
 
     int port = BASE_PORT + player_id;
