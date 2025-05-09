@@ -168,8 +168,6 @@ int main(int argc, char **argv)
                     if (in.packet_type == RAISE) {
                         last_raiser = pid;
                     }
-                    send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-
                     for (int s = 0; s < NUM_PORTS; ++s) {
                         if (game.player_status[s] == PLAYER_LEFT) continue;
                         server_packet_t info;
