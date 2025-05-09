@@ -152,25 +152,24 @@ void server_community(game_state_t *g)
 {
     switch (g->round_stage) {
 
-    case ROUND_PREFLOP:             /* -> FLOP */
-        g->next_card++;                       // **burn**
-        for (int i = 0; i < 3; ++i)
-            g->community_cards[i] = g->deck[g->next_card++];
-        g->round_stage = ROUND_FLOP;
-        break;
+    case ROUND_PREFLOP:
+    g->next_card++;
+    for (int i = 0; i < 3; ++i)
+        g->community_cards[i] = g->deck[g->next_card++];
+    g->round_stage = ROUND_FLOP;
+    break;
 
-    case ROUND_FLOP:                /* -> TURN */
-        g->next_card++;                       // **burn**
+    case ROUND_FLOP:
+        g->next_card++;
         g->community_cards[3] = g->deck[g->next_card++];
         g->round_stage = ROUND_TURN;
         break;
 
-    case ROUND_TURN:                /* -> RIVER */
-        g->next_card++;                       // **burn**
+    case ROUND_TURN:
+        g->next_card++;
         g->community_cards[4] = g->deck[g->next_card++];
         g->round_stage = ROUND_RIVER;
         break;
-
     default:
         break;
     }
