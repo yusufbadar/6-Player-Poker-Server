@@ -142,9 +142,10 @@ int main(int argc, char **argv)
                 game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 3; ++i) {
             game.community_cards[i] = game.deck[game.next_card++];
             game.round_stage = ROUND_FLOP;
+        }   
         server_deal(&game);
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
