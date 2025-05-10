@@ -153,7 +153,7 @@ void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out)
             default:            e->player_status[pl] = 2; break;
         }
     }
-
+    
     e->pot_size = g->pot_size;
     e->dealer   = g->dealer_player;
     e->winner   = winner;
