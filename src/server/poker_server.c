@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <stdbool.h>
 
 #include "poker_client.h"
 #include "client_action_handler.h"
@@ -172,8 +173,9 @@ int main(int argc, char **argv)
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
                 int ended = check_betting_end(&game);
-
-                if (acknack.packet_type == ACK && !check_betting_end(&game)) {
+                int m = in.packet_type; 
+                bool meaningful = (m == RAISE) || (m == CALL  && game.highest_bet > 0) || (m == FOLD);
+                if (acknack.packet_type == ACK && meaningful) {
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
