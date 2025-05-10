@@ -140,27 +140,10 @@ void server_deal(game_state_t *g)
     }
 
     g->round_stage  = ROUND_PREFLOP;
-    
+    g->highest_bet  = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted,       0, sizeof has_acted);
-
-    player_id_t sb = next_active_player(g, g->dealer_player);
-    player_id_t bb = next_active_player(g, sb);
-
-    const int SMALL_BLIND = 1;
-    const int BIG_BLIND   = 2;
-
-    g->current_bets[sb]  = SMALL_BLIND;
-    g->player_stacks[sb] -= SMALL_BLIND;
-    has_acted[sb]        = 1;
-
-    g->current_bets[bb]  = BIG_BLIND;
-    g->player_stacks[bb] -= BIG_BLIND;
-    has_acted[bb]        = 1;
-
-    g->pot_size   = SMALL_BLIND + BIG_BLIND;
-    g->highest_bet = BIG_BLIND;
-    last_raiser    = bb;
+    last_raiser     = -1;
 
     g->current_player = first_active_from(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
