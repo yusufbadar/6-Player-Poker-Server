@@ -94,6 +94,11 @@ void reset_game_state(game_state_t *g)
     memset(has_acted,          0,      sizeof(has_acted));
     last_raiser = -1;
 
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        if (g->player_status[p] != PLAYER_LEFT)
+            g->player_status[p] = PLAYER_ACTIVE;
+    }
+
     g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
 

@@ -136,14 +136,10 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
-        int dealt = 0;
-        for (int card = 0; card < HAND_SIZE; ++card)
-        {
-            for (int offset = 1; offset <= MAX_PLAYERS; ++offset)
-            {
+        for (int card = 0; card < HAND_SIZE; ++card) {
+            for (int offset = 1; offset <= MAX_PLAYERS; ++offset) {
                 player_id_t p = (game.dealer_player + offset) % MAX_PLAYERS;
-                if (game.player_status[p] == PLAYER_ACTIVE)
-                {
+                if (game.player_status[p] == PLAYER_ACTIVE) {
                     game.player_hands[p][card] = game.deck[game.next_card++];
                 }
             }
