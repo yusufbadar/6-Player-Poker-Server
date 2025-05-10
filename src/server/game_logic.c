@@ -110,15 +110,36 @@ int server_ready(game_state_t *game) {
     return 0;
 }
 
+static player_id_t first_active_after(game_state_t *g, player_id_t start)
+{
+    for (int i = 1; i <= MAX_PLAYERS; ++i) {
+        player_id_t p = (start + i) % MAX_PLAYERS;
+        if (g->player_status[p] == PLAYER_ACTIVE)
+            return p;
+    }
+    return (player_id_t)-1;
+}
+
 void server_deal(game_state_t *g)
 {
-    for (int i = 0; i < 3; ++i)
-        g->community_cards[i] = g->deck[g->next_card++];
-    g->round_stage   = ROUND_FLOP;
+    player_id_t pid = first_active_after(g, g->dealer_player);
+    if (pid == (player_id_t)-1) return;
+
+    player_id_t first = pid;
+    do {
+        for (int c = 0; c < HAND_SIZE; ++c)
+            g->player_hands[pid][c] = g->deck[g->next_card++];
+
+        pid = first_active_after(g, pid);
+    } while (pid != first && pid != (player_id_t)-1);
+
+    g->round_stage   = ROUND_PREFLOP;
     g->highest_bet   = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted,       0, sizeof has_acted);
-    last_raiser = -1;
+    last_raiser      = -1;
+
+    g->current_player = first;
 }
 
 int server_bet(game_state_t *g) { 
