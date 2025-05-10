@@ -97,10 +97,16 @@ case RAISE: {
 
 case FOLD:
     g->pot_size        += g->current_bets[pid];
-    g->current_bets[pid] = 0;
+    g->current_bets[pid]  = 0;
+
     g->player_status[pid] = PLAYER_FOLDED;
     has_acted[pid]        = 1;
-    break;
+    g->highest_bet = 0;
+    for (int i = 0; i < MAX_PLAYERS; ++i)
+        if (g->player_status[i] == PLAYER_ACTIVE &&
+            g->current_bets[i]  > g->highest_bet)
+            g->highest_bet = g->current_bets[i];
+     break;
 default:
     out->packet_type = NACK;
     return -1;
