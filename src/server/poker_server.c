@@ -65,6 +65,8 @@ int wait_for_ready(void) {
             if (!responded[s] && FD_ISSET(game.sockets[s], &rfds)) {
                 client_packet_t pkt;
                 if (recv_full(game.sockets[s], &pkt, sizeof(pkt)) == -1) {
+                    game.pot_size        += game.current_bets[s];
+                    game.current_bets[s]  = 0;
                     game.player_status[s] = PLAYER_LEFT;
                     close(game.sockets[s]);
                 } else if (pkt.packet_type == READY) {

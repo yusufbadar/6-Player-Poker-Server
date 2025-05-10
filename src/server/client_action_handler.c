@@ -96,8 +96,10 @@ case RAISE: {
 }
 
 case FOLD:
+    g->pot_size        += g->current_bets[pid];
+    g->current_bets[pid] = 0;
     g->player_status[pid] = PLAYER_FOLDED;
-    has_acted[pid] = 1;
+    has_acted[pid]        = 1;
     break;
 default:
     out->packet_type = NACK;
