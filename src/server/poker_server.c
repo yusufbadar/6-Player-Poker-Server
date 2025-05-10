@@ -25,13 +25,14 @@ typedef struct {
 
 static int server_fds[NUM_PORTS] = { -1 };
 
-game_state_t game; //global variable to store our game state info (this is a huge hint for you)
+game_state_t game; // global variable to store our game state info
 
 static void kill(const char *msg)
 {
     perror(msg);
     exit(EXIT_FAILURE);
 }
+
 static int recv_full(int fd, void *buf, size_t len)
 {
     size_t r = 0;
@@ -42,6 +43,18 @@ static int recv_full(int fd, void *buf, size_t len)
     }
     return 0;
 }
+
+static int send_full(int fd, const void *buf, size_t len)
+{
+    size_t s = 0;
+    while (s < len) {
+        ssize_t n = send(fd, (const char*)buf + s, len - s, 0);
+        if (n <= 0) return -1;
+        s += (size_t)n;
+    }
+    return 0;
+}
+
 int wait_for_ready(void) {
     int ready_cnt = 0;
     int responded_cnt = 0;
@@ -58,11 +71,13 @@ int wait_for_ready(void) {
             }
         }
 
+        if (maxfd == -1) break;
+
         if (select(maxfd + 1, &rfds, NULL, NULL, NULL) < 0)
             kill("select");
 
         for (int s = 0; s < NUM_PORTS; ++s) {
-            if (!responded[s] && FD_ISSET(game.sockets[s], &rfds)) {
+            if (game.player_status[s] != PLAYER_LEFT && !responded[s] && FD_ISSET(game.sockets[s], &rfds)) {
                 client_packet_t pkt;
                 if (recv_full(game.sockets[s], &pkt, sizeof(pkt)) == -1) {
                     game.pot_size        += game.current_bets[s];
@@ -83,6 +98,7 @@ int wait_for_ready(void) {
 
     return ready_cnt;
 }
+
 static inline player_id_t next_active_player(game_state_t *g, player_id_t start)
 {
     for (int i = 0; i < MAX_PLAYERS; ++i) {
@@ -91,6 +107,30 @@ static inline player_id_t next_active_player(game_state_t *g, player_id_t start)
     }
     return -1;
 }
+
+void send_info_to_all_players() {
+    for (int s = 0; s < MAX_PLAYERS; ++s) {
+        if (game.player_status[s] != PLAYER_LEFT) {
+            server_packet_t info;
+            build_info_packet(&game, s, &info);
+            if (send_full(game.sockets[s], &info, sizeof(info)) == -1) {
+                game.player_status[s] = PLAYER_LEFT;
+                close(game.sockets[s]);
+            }
+        }
+    }
+}
+
+int count_active_players() {
+    int count = 0;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game.player_status[i] == PLAYER_ACTIVE || game.player_status[i] == PLAYER_ALLIN) {
+            count++;
+        }
+    }
+    return count;
+}
+
 int main(int argc, char **argv)
 {
     for (int i = 0; i < NUM_PORTS; ++i) {
@@ -126,7 +166,6 @@ int main(int argc, char **argv)
     }
 
     while (1) {
-
         int num_ready = wait_for_ready();
         if (num_ready < 2) {
             server_packet_t halt = { .packet_type = HALT };
@@ -142,18 +181,13 @@ int main(int argc, char **argv)
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
 
-        for (int s = 0; s < NUM_PORTS; ++s) {
-            if (game.player_status[s] == PLAYER_LEFT) continue;
-            server_packet_t ip;
-            build_info_packet(&game, s, &ip);
-            send(game.sockets[s], &ip, sizeof(ip), 0);
-        }
+        send_info_to_all_players();
 
         while (1) {
             while (!check_betting_end(&game)) {
                 player_id_t pid = game.current_player;
                 if (game.player_status[pid] != PLAYER_ACTIVE) {
-                    game.current_player = (pid + 1) % MAX_PLAYERS;
+                    game.current_player = next_active_player(&game, (pid + 1) % MAX_PLAYERS);
                     continue;
                 }
 
@@ -174,57 +208,70 @@ int main(int argc, char **argv)
                 }
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-
-                for (int s = 0; s < NUM_PORTS; ++s) {
-                    if (game.player_status[s] == PLAYER_LEFT) continue;
-                    server_packet_t info;
-                    build_info_packet(&game, s, &info);
-                    send(game.sockets[s], &info, sizeof(info), 0);
-                }
+                
+                send_info_to_all_players();
             }
 
-            int survivors = 0, surv = -1;
-            for (int s = 0; s < NUM_PORTS; ++s)
-                if (game.player_status[s] == PLAYER_ACTIVE) { ++survivors; surv = s; }
+            int active_count = count_active_players();
+            if (active_count <= 1) {
+                player_id_t winner = -1;
+                for (int s = 0; s < MAX_PLAYERS; ++s) {
+                    if (game.player_status[s] == PLAYER_ACTIVE || game.player_status[s] == PLAYER_ALLIN) {
+                        winner = s;
+                        break;
+                    }
+                }
+                
+                if (winner != -1) {
+                    game.player_stacks[winner] += game.pot_size;
+                    game.pot_size = 0;
 
-            if (survivors == 1) {
-                game.player_stacks[surv] += game.pot_size;
-                game.pot_size = 0;
-
-                server_packet_t ep; build_end_packet(&game, surv, &ep);
-                for (int s = 0; s < NUM_PORTS; ++s){
-                    if (game.player_status[s] != PLAYER_LEFT){
-                        send(game.sockets[s], &ep, sizeof(ep), 0);
+                    server_packet_t ep;
+                    build_end_packet(&game, winner, &ep);
+                    for (int s = 0; s < NUM_PORTS; ++s) {
+                        if (game.player_status[s] != PLAYER_LEFT) {
+                            send(game.sockets[s], &ep, sizeof(ep), 0);
+                        }
                     }
                 }
                 break;
             }
+
             if (game.round_stage == ROUND_RIVER) break;
+            
             server_community(&game);
             memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
             last_raiser = -1;
-            for (int s = 0; s < NUM_PORTS; ++s) {
-                if (game.player_status[s] == PLAYER_LEFT) continue;
-                server_packet_t info; build_info_packet(&game, s, &info);
-                send(game.sockets[s], &info, sizeof(info), 0);
-            }
+            
+            send_info_to_all_players();
         }
 
-        player_id_t winner = find_winner(&game);
-        if (winner == -1) {
-            for (int s = 0; s < MAX_PLAYERS; ++s)
-                if (game.player_status[s] == PLAYER_ACTIVE) { winner = s; break; }
-        }
-        game.player_stacks[winner] += game.pot_size;
-        
-        server_packet_t end_pkt; build_end_packet(&game, winner, &end_pkt);
-        for (int s = 0; s < NUM_PORTS; ++s){
-            if (game.player_status[s] != PLAYER_LEFT){
-                send(game.sockets[s], &end_pkt, sizeof(end_pkt), 0);
+        if (game.round_stage == ROUND_RIVER) {
+            player_id_t winner = find_winner(&game);
+            if (winner == -1) {
+                for (int s = 0; s < MAX_PLAYERS; ++s) {
+                    if (game.player_status[s] == PLAYER_ACTIVE || game.player_status[s] == PLAYER_ALLIN) {
+                        winner = s;
+                        break;
+                    }
+                }
+            }
+            
+            if (winner != -1) {
+                game.player_stacks[winner] += game.pot_size;
+                game.pot_size = 0;
+            }
+            
+            server_packet_t end_pkt;
+            build_end_packet(&game, winner, &end_pkt);
+            for (int s = 0; s < NUM_PORTS; ++s) {
+                if (game.player_status[s] != PLAYER_LEFT) {
+                    send(game.sockets[s], &end_pkt, sizeof(end_pkt), 0);
+                }
             }
         }
     }
-    // Close all fds (you're welcome)
+    
     for (int i = 0; i < MAX_PLAYERS; i++) {
         close(server_fds[i]);
         if (game.player_status[i] != PLAYER_LEFT) {
