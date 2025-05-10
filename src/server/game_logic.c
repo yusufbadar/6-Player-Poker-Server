@@ -121,7 +121,7 @@ void server_deal(game_state_t *g)
 {
     for (int i = 0; i < 3; ++i)
         g->community_cards[i] = g->deck[g->next_card++];
-    g->round_stage   = ROUND_FLOP;
+    g->round_stage   = ROUND_PREFLOP;
     g->highest_bet   = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted,       0, sizeof has_acted);
@@ -157,7 +157,7 @@ void server_community(game_state_t *g)
             g->community_cards[4] = g->deck[g->next_card++];
             g->round_stage = ROUND_RIVER;
             break;
-
+            
         case ROUND_PREFLOP:
         for (int i = 0; i < 3; i++){
             g->community_cards[i] = g->deck[g->next_card++]; 
