@@ -170,23 +170,20 @@ int main(int argc, char **argv)
 
                 server_packet_t acknack;
                 if (handle_client_action(&game, pid, &in, &acknack) == 0 &&
-                acknack.packet_type == ACK) {
+                    acknack.packet_type == ACK) {
                     has_acted[pid] = 1;
                     if (in.packet_type == RAISE) last_raiser = pid;
                     game.current_player = next_active_player(&game, (pid + 1) % MAX_PLAYERS);
                 }
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-                int ended = check_betting_end(&game);
-
-                if (acknack.packet_type == ACK) {
+                
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
                     build_info_packet(&game, s, &info);
-                    send(game.sockets[s], &info, sizeof info, 0);
+                    send(game.sockets[s], &info, sizeof(info), 0);
                 }
-            }
             }
 
             int survivors = 0, surv = -1;
