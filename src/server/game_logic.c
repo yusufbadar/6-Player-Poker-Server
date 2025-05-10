@@ -25,11 +25,9 @@ void print_game_state( game_state_t *game){
 void init_deck(card_t deck[DECK_SIZE], int seed){ //DO NOT TOUCH THIS FUNCTION
     srand(seed);
     int i = 0;
-    for(int r = 0; r<13; r++){
-        for(int s = 0; s<4; s++){
+    for (int s = 0; s < 4;  ++s)
+        for (int r = 0; r < 13; ++r)
             deck[i++] = (r << SUITE_BITS) | s;
-        }
-    }
 }
 
 void shuffle_deck(card_t deck[DECK_SIZE])
