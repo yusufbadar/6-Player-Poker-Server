@@ -177,6 +177,7 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
+        server_deal(&game);
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
 
@@ -208,7 +209,9 @@ int main(int argc, char **argv)
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
                 
-                send_info_to_all_players();
+                if (acknack.packet_type == ACK) {
+                    send_info_to_all_players(); 
+                }
             }
 
             int active_count = count_active_players();
