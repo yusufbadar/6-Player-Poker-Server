@@ -156,6 +156,13 @@ void server_community(game_state_t *g)
             g->round_stage = ROUND_RIVER;
             break;
             
+        case ROUND_PREFLOP:
+        for (int i = 0; i < 3; i++){
+            g->community_cards[i] = g->deck[g->next_card++]; 
+        }
+        g->round_stage = ROUND_FLOP;
+        break;
+
         default:
             break;
     }
