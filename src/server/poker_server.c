@@ -136,17 +136,16 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
-
         for (int p = 0; p < MAX_PLAYERS; ++p) {
             if (game.player_status[p] == PLAYER_ACTIVE) {
-                game.player_hands[p][0] = game.deck[game.next_card++];
-                game.player_hands[p][1] = game.deck[game.next_card++];
+               game.player_hands[p][0] = game.deck[game.next_card++];
+               game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
-        game.round_stage = ROUND_PREFLOP;
-        memset(has_acted, 0, sizeof(has_acted));
-        last_raiser = -1;
 
+        server_deal(&game);
+        memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
+        last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
             if (game.player_status[s] == PLAYER_LEFT) continue;
             server_packet_t ip;
