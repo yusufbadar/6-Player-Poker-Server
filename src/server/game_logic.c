@@ -15,10 +15,8 @@
 extern int has_acted[MAX_PLAYERS];
 extern int last_raiser;
 
-//Feel free to add your own code. I stripped out most of our solution functions but I left some "breadcrumbs" for anyone lost
-
 // for debugging
-void print_game_state( game_state_t *game){
+void print_game_state(game_state_t *game){
     (void) game;
 }
 
@@ -39,7 +37,7 @@ void shuffle_deck(card_t deck[DECK_SIZE])
         deck[j]    = tmp;
     }
 }
-//You dont need to use this if you dont want, but we did.
+
 void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
     memset(game, 0, sizeof(game_state_t));
@@ -61,6 +59,7 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
     game->dealer_player = 0;
     game->current_player = 1;
 }
+
 player_id_t next_active_player(game_state_t *g, player_id_t start)
 {
     for (int i = 0; i < MAX_PLAYERS; ++i) {
@@ -69,6 +68,7 @@ player_id_t next_active_player(game_state_t *g, player_id_t start)
     }
     return -1;
 }
+
 void reset_game_state(game_state_t *g)
 {
     shuffle_deck(g->deck);
@@ -87,9 +87,16 @@ void reset_game_state(game_state_t *g)
 
     g->round_stage = ROUND_INIT;
     g->pot_size = g->highest_bet = 0;
+    
+    // Reset all cards
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        g->player_hands[p][0] = NOCARD;
+        g->player_hands[p][1] = NOCARD;
+    }
+    
     memset(g->community_cards, NOCARD, sizeof(g->community_cards));
-    memset(g->current_bets,    0,      sizeof(g->current_bets));
-    memset(has_acted,          0,      sizeof(has_acted));
+    memset(g->current_bets, 0, sizeof(g->current_bets));
+    memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
     last_raiser = -1;
 
     for (int p = 0; p < MAX_PLAYERS; ++p) {
@@ -101,7 +108,6 @@ void reset_game_state(game_state_t *g)
 }
 
 void server_join(game_state_t *game) {
-    //This function was called to get the join packets from all players
     (void) game;
 }
 
@@ -125,9 +131,8 @@ static player_id_t first_active_from(game_state_t *g, player_id_t start)
     for (int p = start; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] == PLAYER_ACTIVE)
             return p;
-    return (player_id_t)-1;
+    return first_active_from(g, 0);
 }
-
 
 void server_deal(game_state_t *g)
 {
@@ -138,17 +143,22 @@ void server_deal(game_state_t *g)
         }
     }
 
-    g->round_stage  = ROUND_PREFLOP;
-    g->highest_bet  = 0;
-    memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted,       0, sizeof has_acted);
-    last_raiser     = -1;
+    g->round_stage = ROUND_PREFLOP;
+    g->highest_bet = 0;
+    memset(g->current_bets, 0, sizeof(g->current_bets));
+    memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
+    last_raiser = -1;
 
-    g->current_player = first_active_from(g, (g->dealer_player + 1) % MAX_PLAYERS);
+    g->current_player = first_active_after(g, g->dealer_player);
+    if (g->current_player == -1) {
+        g->current_player = first_active_from(g, 0);
+    }
 }
+
 int server_bet(game_state_t *g) { 
     return check_betting_end(g); 
 }
+
 int check_betting_end(game_state_t *g) {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         if (g->player_status[p] == PLAYER_ACTIVE) {
@@ -165,6 +175,13 @@ int check_betting_end(game_state_t *g) {
 void server_community(game_state_t *g)
 {
     switch (g->round_stage) {    
+        case ROUND_PREFLOP:
+            for (int i = 0; i < 3; i++) {
+                g->community_cards[i] = g->deck[g->next_card++]; 
+            }
+            g->round_stage = ROUND_FLOP;
+            break;
+            
         case ROUND_FLOP:
             g->community_cards[3] = g->deck[g->next_card++];
             g->round_stage = ROUND_TURN;
@@ -174,13 +191,6 @@ void server_community(game_state_t *g)
             g->community_cards[4] = g->deck[g->next_card++];
             g->round_stage = ROUND_RIVER;
             break;
-            
-        case ROUND_PREFLOP:
-        for (int i = 0; i < 3; i++){
-            g->community_cards[i] = g->deck[g->next_card++]; 
-        }
-        g->round_stage = ROUND_FLOP;
-        break;
 
         default:
             break;
@@ -188,41 +198,148 @@ void server_community(game_state_t *g)
 
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof(g->current_bets));
-    memset(has_acted, 0, sizeof(has_acted));
+    memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
     last_raiser = -1;
-    int offset = 1;
-    g->current_player = next_active_player(g, (g->dealer_player + offset) % MAX_PLAYERS);
+    
+    player_id_t start = (g->dealer_player + 1) % MAX_PLAYERS;
+    g->current_player = next_active_player(g, start);
 }
 
+int get_hand_rank(card_t cards[], int num_cards) {
+    enum {
+        HIGH_CARD,
+        ONE_PAIR,
+        TWO_PAIR,
+        THREE_OF_A_KIND,
+        STRAIGHT,
+        FLUSH,
+        FULL_HOUSE,
+        FOUR_OF_A_KIND,
+        STRAIGHT_FLUSH
+    };
 
-int evaluate_hand(game_state_t *game, player_id_t pid) {
-    card_t all_cards[7];
-    all_cards[0] = game->player_hands[pid][0];
-    all_cards[1] = game->player_hands[pid][1];
+    int ranks[13] = {0};
+    int suits[4] = {0};
     
-    int cc = 0;
-    for (int i = 0; i < MAX_COMMUNITY_CARDS; i++) {
-        if (game->community_cards[i] != NOCARD) {
-            all_cards[2 + cc++] = game->community_cards[i];
+    for (int i = 0; i < num_cards; i++) {
+        int rank = ((cards[i] & RANK_MASK) >> 4) + 2;
+        int suit = cards[i] & SUIT_MASK;
+        ranks[rank-2]++;  // Index 0 is rank 2
+        suits[suit]++;
+    }
+    
+    int flush_suit = -1;
+    for (int i = 0; i < 4; i++) {
+        if (suits[i] >= 5) flush_suit = i;
+    }
+    
+    int straight_high = -1;
+    int consecutive = 0;
+    for (int i = 0; i < 13; i++) {
+        if (ranks[i] > 0) {
+            consecutive++;
+            if (consecutive >= 5) straight_high = i + 2;
+        } else {
+            consecutive = 0;
         }
     }
     
-    int max_rank = 0;
-    for (int i = 0; i < 2 + cc; i++) {
-        int rank = (all_cards[i] & RANK_MASK) >> 4;  // Extract rank
-        if (rank > max_rank) max_rank = rank;
+    if (ranks[0] > 0 && ranks[1] > 0 && ranks[2] > 0 && ranks[3] > 0 && ranks[12] > 0) {
+        straight_high = 5; 
     }
-    int rank_counts[13] = {0};
+    
+    int num_pairs = 0;
     int pair_rank = -1;
-
-    for (int i = 0; i < 2 + cc; i++) {
-        int rank = (all_cards[i] & RANK_MASK) >> 4;
-        rank_counts[rank]++;
-        if (rank_counts[rank] == 2) pair_rank = rank;
-        if (rank > max_rank) max_rank = rank;
+    int trips_rank = -1;
+    int quads_rank = -1;
+    
+    for (int i = 12; i >= 0; i--) {
+        if (ranks[i] == 4) quads_rank = i + 2;
+        else if (ranks[i] == 3) trips_rank = i + 2;
+        else if (ranks[i] == 2) {
+            num_pairs++;
+            if (pair_rank == -1) pair_rank = i + 2;
+        }
     }
+    
+    if (straight_high > 0 && flush_suit >= 0) {
+        return STRAIGHT_FLUSH * 100 + straight_high;
+    }
+    
+    if (quads_rank > 0) {
+        return FOUR_OF_A_KIND * 100 + quads_rank;
+    }
+    
+    if (trips_rank > 0 && num_pairs > 0) {
+        return FULL_HOUSE * 100 + trips_rank;
+    }
+    
+    if (flush_suit >= 0) {
+        int high_card = 0;
+        for (int i = 12; i >= 0; i--) {
+            if (ranks[i] > 0) {
+                high_card = i + 2;
+                break;
+            }
+        }
+        return FLUSH * 100 + high_card;
+    }
+    
+    if (straight_high > 0) {
+        return STRAIGHT * 100 + straight_high;
+    }
+    
+    if (trips_rank > 0) {
+        return THREE_OF_A_KIND * 100 + trips_rank;
+    }
+    
+    if (num_pairs >= 2) {
+        int second_pair = -1;
+        int count = 0;
+        for (int i = 12; i >= 0; i--) {
+            if (ranks[i] == 2) {
+                count++;
+                if (count == 2) {
+                    second_pair = i + 2;
+                    break;
+                }
+            }
+        }
+        return TWO_PAIR * 100 + pair_rank * 10 + second_pair;
+    }
+    
+    if (pair_rank > 0) {
+        return ONE_PAIR * 100 + pair_rank;
+    }
+    
+    int high_card = 0;
+    for (int i = 12; i >= 0; i--) {
+        if (ranks[i] > 0) {
+            high_card = i + 2;
+            break;
+        }
+    }
+    return HIGH_CARD * 100 + high_card;
+}
 
-    return (pair_rank != -1) ? (1 << 16) | (pair_rank << 8) | max_rank : max_rank;
+int evaluate_hand(game_state_t *game, player_id_t pid) {
+    card_t all_cards[7];
+    int num_cards = 0;
+    
+    if (game->player_hands[pid][0] != NOCARD) {
+        all_cards[num_cards++] = game->player_hands[pid][0];
+    }
+    if (game->player_hands[pid][1] != NOCARD) {
+        all_cards[num_cards++] = game->player_hands[pid][1];
+    }
+    
+    for (int i = 0; i < MAX_COMMUNITY_CARDS; i++) {
+        if (game->community_cards[i] != NOCARD) {
+            all_cards[num_cards++] = game->community_cards[i];
+        }
+    }
+    
+    return get_hand_rank(all_cards, num_cards);
 }
 
 int find_winner(game_state_t *game) {
@@ -230,7 +347,8 @@ int find_winner(game_state_t *game) {
     int winner = -1;
     
     for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (game->player_status[i] == PLAYER_ACTIVE) {
+        if (game->player_status[i] == PLAYER_ACTIVE || 
+            game->player_status[i] == PLAYER_ALLIN) {
             int score = evaluate_hand(game, i);
             if (score > best_score) {
                 best_score = score;
