@@ -141,8 +141,8 @@ void build_info_packet(game_state_t *game, player_id_t pid, server_packet_t *out
         }
     }
     p->pot_size = game->pot_size;
-    p->dealer = game->dealer_player;
-    p->player_turn = game->current_player;
+    p->dealer = game->dealer_player + 1;
+    p->player_turn = game->current_player + 1;
     p->bet_size = game->highest_bet;
 }
 
@@ -173,6 +173,6 @@ void build_end_packet(game_state_t *game, player_id_t winner, server_packet_t *o
         }
     }
     p->pot_size = game->pot_size;
-    p->dealer = game->dealer_player;
-    p->winner = winner;
+    p->dealer = game->dealer_player + 1;
+    p->winner = winner + 1;
 }
