@@ -158,7 +158,7 @@ void server_community(game_state_t *g)
             break;
             
         case ROUND_PREFLOP:
-        g->round_stage = ROUND_PREFLOP;
+        g->round_stage = ROUND_FLOP;
         break;
 
         default:
