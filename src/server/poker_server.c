@@ -25,7 +25,6 @@ static int  server_fds[NUM_PORTS] = { -1 };
 game_state_t game;
 
 
-
 static int recv_full(int fd, void *buf, size_t len)
 {
     size_t r = 0;
