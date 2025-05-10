@@ -44,6 +44,7 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
     memset(game, 0, sizeof(game_state_t));
     init_deck(game->deck, random_seed);
+    shuffle_deck(game->deck);
 
     game->next_card = 0;
     game->round_stage = ROUND_JOIN;
@@ -122,12 +123,13 @@ static player_id_t first_active_after(game_state_t *g, player_id_t start)
 
 static player_id_t first_active_from(game_state_t *g, player_id_t start)
 {
-    for (int p = start; p < MAX_PLAYERS; ++p)
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        player_id_t p = (start + i) % MAX_PLAYERS;
         if (g->player_status[p] == PLAYER_ACTIVE)
             return p;
+    }
     return (player_id_t)-1;
 }
-
 void server_deal(game_state_t *g)
 {
     for (player_id_t pid = 0; pid < MAX_PLAYERS; ++pid) {
@@ -138,10 +140,27 @@ void server_deal(game_state_t *g)
     }
 
     g->round_stage  = ROUND_PREFLOP;
-    g->highest_bet  = 0;
+    
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted,       0, sizeof has_acted);
-    last_raiser     = -1;
+
+    player_id_t sb = next_active_player(g, g->dealer_player);
+    player_id_t bb = next_active_player(g, sb);
+
+    const int SMALL_BLIND = 1;
+    const int BIG_BLIND   = 2;
+
+    g->current_bets[sb]  = SMALL_BLIND;
+    g->player_stacks[sb] -= SMALL_BLIND;
+    has_acted[sb]        = 1;
+
+    g->current_bets[bb]  = BIG_BLIND;
+    g->player_stacks[bb] -= BIG_BLIND;
+    has_acted[bb]        = 1;
+
+    g->pot_size   = SMALL_BLIND + BIG_BLIND;
+    g->highest_bet = BIG_BLIND;
+    last_raiser    = bb;
 
     g->current_player = first_active_from(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
@@ -150,13 +169,14 @@ int server_bet(game_state_t *g) {
 }
 int check_betting_end(game_state_t *g) {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (!has_acted[p] || 
-                (g->current_bets[p] < g->highest_bet && 
-                 g->player_stacks[p] > 0)) {
-                return 0;
-            }
-        }
+        if (g->player_status[p] != PLAYER_ACTIVE)
+            continue;
+        if (!has_acted[p])
+            return 0;
+
+        if (g->player_stacks[p] > 0 &&
+            g->current_bets[p] < g->highest_bet)
+            return 0;
     }
     return 1;
 }
@@ -189,7 +209,7 @@ void server_community(game_state_t *g)
     memset(g->current_bets, 0, sizeof(g->current_bets));
     memset(has_acted, 0, sizeof(has_acted));
     last_raiser = -1;
-    int offset = 1;
+    int offset = (g->round_stage == ROUND_FLOP) ? 0 : 1;
     g->current_player = next_active_player(g, (g->dealer_player + offset) % MAX_PLAYERS);
 }
 
@@ -238,4 +258,12 @@ int find_winner(game_state_t *game) {
         }
     }
     return winner;
+}
+void settle_pot(game_state_t *g)
+{
+    int winner = find_winner(g);
+    if (winner < 0) return;
+
+    g->player_stacks[winner] += g->pot_size;
+    g->pot_size = 0;
 }
