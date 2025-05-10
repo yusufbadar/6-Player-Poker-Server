@@ -142,9 +142,7 @@ int main(int argc, char **argv)
                 game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
-        game.round_stage  = ROUND_PREFLOP;
-        game.highest_bet  = 0;
-        memset(game.current_bets, 0, sizeof(game.current_bets));
+        server_deal(&game);
         memset(has_acted, 0, sizeof(has_acted));
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
