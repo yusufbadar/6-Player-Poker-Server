@@ -44,7 +44,6 @@ void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
     memset(game, 0, sizeof(game_state_t));
     init_deck(game->deck, random_seed);
-    shuffle_deck(game->deck);
 
     game->next_card = 0;
     game->round_stage = ROUND_JOIN;
@@ -123,13 +122,13 @@ static player_id_t first_active_after(game_state_t *g, player_id_t start)
 
 static player_id_t first_active_from(game_state_t *g, player_id_t start)
 {
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        player_id_t p = (start + i) % MAX_PLAYERS;
+    for (int p = start; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] == PLAYER_ACTIVE)
             return p;
-    }
     return (player_id_t)-1;
 }
+
+
 void server_deal(game_state_t *g)
 {
     for (player_id_t pid = 0; pid < MAX_PLAYERS; ++pid) {
