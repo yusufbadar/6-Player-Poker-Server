@@ -73,38 +73,41 @@ player_id_t next_active_player(game_state_t *g, player_id_t start)
 }
 void reset_game_state(game_state_t *game)
 {
-    round_stage_t prev_stage = game->round_stage;
-
     shuffle_deck(game->deck);
     game->next_card = 0;
+
+    int prev_dealer = game->dealer_player;
+    int found = 0;
+    for (int i = 1; i <= MAX_PLAYERS; ++i) {
+        int candidate = (prev_dealer + i) % MAX_PLAYERS;
+        if (game->player_status[candidate] != PLAYER_LEFT) {
+            game->dealer_player = candidate;
+            found = 1;
+            break;
+        }
+    }
+    if (!found) game->dealer_player = 0;
+
     game->round_stage = ROUND_INIT;
     game->pot_size = 0;
-    game->highest_bet  = 0;
-
-    if (prev_stage != ROUND_JOIN) {
-        game->dealer_player  = (game->dealer_player + 1) % MAX_PLAYERS;
-    }
-    game->current_player = next_active_player(game, (game->dealer_player + 1) % MAX_PLAYERS);
+    game->highest_bet = 0;
 
     for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
         game->community_cards[i] = NOCARD;
-
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        game->current_bets[p] = 0;
-
-        if (game->player_status[p] != PLAYER_LEFT)
-            game->player_status[p] = PLAYER_ACTIVE;
-
+    for (int p = 0; p < MAX_PLAYERS; ++p)
         for (int c = 0; c < HAND_SIZE; ++c)
             game->player_hands[p][c] = NOCARD;
+
+    memset(game->current_bets, 0, sizeof(game->current_bets));
+    memset(has_acted, 0, sizeof(has_acted));
+    last_raiser = -1;
+
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        if (game->player_status[p] != PLAYER_LEFT)
+            game->player_status[p] = PLAYER_ACTIVE;
     }
-    if (prev_stage != ROUND_JOIN) {
-        int new_dealer = game->dealer_player;
-        do {
-            new_dealer = (new_dealer + 1) % MAX_PLAYERS;
-        } while (game->player_status[new_dealer] != PLAYER_ACTIVE);
-        game->dealer_player = new_dealer;
-    }
+
+    game->current_player = next_active_player(game, (game->dealer_player + 1) % MAX_PLAYERS);
 }
 
 void server_join(game_state_t *game) {
