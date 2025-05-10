@@ -169,14 +169,13 @@ int server_bet(game_state_t *g) {
 }
 int check_betting_end(game_state_t *g) {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] != PLAYER_ACTIVE)
-            continue;
-        if (!has_acted[p])
-            return 0;
-
-        if (g->player_stacks[p] > 0 &&
-            g->current_bets[p] < g->highest_bet)
-            return 0;
+        if (g->player_status[p] == PLAYER_ACTIVE) {
+            if (!has_acted[p] || 
+                (g->current_bets[p] < g->highest_bet && 
+                 g->player_stacks[p] > 0)) {
+                return 0;
+            }
+        }
     }
     return 1;
 }
