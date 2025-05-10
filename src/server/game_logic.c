@@ -59,8 +59,8 @@ void init_game_state(game_state_t *g, int starting_stack, int seed)
     memset(g, 0, sizeof *g);
     init_deck(g->deck, seed);
     g->round_stage    = ROUND_INIT;
-    g->dealer_player  = -1;
-    g->current_player = -1;
+    g->dealer_player  = 0;
+    g->current_player = 0;
     g->next_card = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         g->player_stacks[p] = starting_stack;
