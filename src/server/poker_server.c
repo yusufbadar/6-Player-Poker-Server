@@ -137,6 +137,7 @@ int main(int argc, char **argv)
 
         reset_game_state(&game);
         server_deal(&game);
+        server_community(&game);
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
 
