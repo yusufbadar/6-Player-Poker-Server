@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
                     }
 
                     if (actions < num_active) {
-                        game.current_player = next_active_player(&game, game.current_player);
+                        game.current_player = count_active_players(&game, game.current_player);
                         broadcast_info();
                     }
                 }
