@@ -203,7 +203,6 @@ int main(int argc, char **argv)
                 }
                 break;
             }
-            if (game.round_stage == ROUND_RIVER) break;
             server_community(&game);
             memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
             last_raiser = -1;
