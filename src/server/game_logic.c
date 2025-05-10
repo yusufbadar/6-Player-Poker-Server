@@ -171,8 +171,10 @@ void server_community(game_state_t *g)
     memset(g->current_bets, 0, sizeof(g->current_bets));
     memset(has_acted, 0, sizeof(has_acted));
     last_raiser = -1;
-    g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
+    int offset = (g->round_stage == ROUND_FLOP) ? 2 : 1;
+    g->current_player = next_active_player(g, (g->dealer_player + offset) % MAX_PLAYERS);
 }
+
 
 int evaluate_hand(game_state_t *game, player_id_t pid) {
     card_t all_cards[7];
