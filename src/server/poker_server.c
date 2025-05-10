@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
         reset_game_state(&game);
         server_deal(&game);
-        memset(has_acted, 0, sizeof(has_acted));
+        memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
             if (game.player_status[s] == PLAYER_LEFT) continue;
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
             }
             if (game.round_stage == ROUND_RIVER) break;
             server_community(&game);
-            memset(has_acted, 0, sizeof(has_acted));
+            memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
             last_raiser = -1;
             for (int s = 0; s < NUM_PORTS; ++s) {
                 if (game.player_status[s] == PLAYER_LEFT) continue;
