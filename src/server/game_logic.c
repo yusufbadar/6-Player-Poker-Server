@@ -24,7 +24,7 @@ void init_deck(card_t deck[DECK_SIZE], int seed)
 
 void shuffle_deck(card_t deck[DECK_SIZE])
 {
-    for (int i = 0; i < DECK_SIZE - 1; ++i) {
+    for (int i = 0; i < DECK_SIZE; ++i) {
         int j = rand() % DECK_SIZE;
         card_t tmp = deck[i];
         deck[i] = deck[j];
@@ -44,21 +44,23 @@ static player_id_t first_active_after(const game_state_t *g, player_id_t start)
 
 player_id_t next_active_player(const game_state_t *g, player_id_t start)
 {
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
+    for (int i = 1; i <= MAX_PLAYERS; ++i) {
         player_id_t p = (start + i) % MAX_PLAYERS;
         if (g->player_status[p] == PLAYER_ACTIVE)
             return p;
     }
     return (player_id_t)-1;
 }
-
+static int cmp_desc(const void *a, const void *b) {
+    return (*(int*)b) - (*(int*)a);
+}
 void init_game_state(game_state_t *g, int starting_stack, int seed)
 {
     memset(g, 0, sizeof *g);
     init_deck(g->deck, seed);
-    g->round_stage = ROUND_JOIN;
-    g->dealer_player = 0;
-    g->current_player = 0;
+    g->round_stage    = ROUND_INIT;
+    g->dealer_player  = -1;
+    g->current_player = -1;
     g->next_card = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         g->player_stacks[p] = starting_stack;
@@ -80,18 +82,9 @@ void reset_game_state(game_state_t *g)
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted, 0, sizeof has_acted);
     last_raiser = -1;
-    for (int i = 1; i <= MAX_PLAYERS; ++i) {
-        int cand = (g->dealer_player + i) % MAX_PLAYERS;
-        if (g->player_status[cand] != PLAYER_LEFT) {
-            g->dealer_player = cand;
-            break;
-        }
-    }
     for (int p = 0; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] != PLAYER_LEFT)
-            g->player_status[p] = PLAYER_ACTIVE;
-    g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
-}
+            g->player_status[p] = PLAYER_ACTIVE;}
 
 void server_join(game_state_t *g)
 {
@@ -226,7 +219,7 @@ static int hand_value(card_t *cards, int count)
         for (int i = 0; i < count; ++i)
             if (CARD_SUIT(cards[i]) == s)
                 sr[m++] = CARD_RANK(cards[i]);
-        qsort(sr, m, sizeof *sr, (__compar_fn_t)strcmp);
+         qsort(sr, m, sizeof *sr, cmp_desc);
         int uniq_sr[8], k = 0, last = -2;
         for (int i = 0; i < m; ++i)
             if (sr[i] != last) {

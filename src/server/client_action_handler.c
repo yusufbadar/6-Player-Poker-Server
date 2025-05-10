@@ -4,7 +4,7 @@
 int handle_client_action(game_state_t *g, player_id_t pid, 
         const client_packet_t *in, server_packet_t *out) {
     // Verify it's the player's turn
-    if (g->current_player != pid || g->player_status[pid] != PLAYER_ACTIVE) {
+    if (g->current_player != pid) {
         out->packet_type = NACK;
         return -1;
     }
@@ -17,17 +17,22 @@ int handle_client_action(game_state_t *g, player_id_t pid,
                 out->packet_type = NACK;
                 return -1;
             }
-            break;
+            out->packet_type = ACK;
+            return 0;
             
         case CALL:
             if (to_call <= 0 || to_call > g->player_stacks[pid]) {
                 out->packet_type = NACK;
                 return -1;
             }
-            g->player_stacks[pid] -= to_call;
-            g->current_bets[pid] += to_call;
-            g->pot_size += to_call;
-            break;
+        g->player_stacks[pid] -= to_call;
+        g->current_bets[pid] += to_call;
+        g->pot_size += to_call;
+        if (g->player_stacks[pid] == 0) {
+            g->player_status[pid] = PLAYER_ALLIN;
+        }
+        out->packet_type = ACK;
+        return 0;
             
         case RAISE: {
             int raise_amt = in->params[0];
@@ -44,12 +49,17 @@ int handle_client_action(game_state_t *g, player_id_t pid,
             g->current_bets[pid] += need;
             g->highest_bet = raise_amt;
             g->pot_size += need;
-            break;
+            if (g->player_stacks[pid] == 0) {
+                g->player_status[pid] = PLAYER_ALLIN;
+            }
+            out->packet_type = ACK;
+            return 0;
         }
             
         case FOLD:
             g->player_status[pid] = PLAYER_FOLDED;
-            break;
+            out->packet_type = ACK;
+            return 0;
             
         default:
             out->packet_type = NACK;

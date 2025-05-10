@@ -84,7 +84,8 @@ static void broadcast_end(int winner) {
 static int count_active_players(void) {
     int n = 0;
     for (int i = 0; i < MAX_PLAYERS; ++i) {
-        if (game.player_status[i] == PLAYER_ACTIVE) {
+        if (game.player_status[i] == PLAYER_ACTIVE
+         || game.player_status[i] == PLAYER_ALLIN) {
             ++n;
         }
     }
@@ -119,6 +120,8 @@ int main(int argc, char **argv) {
         client_packet_t join_pkt;
         recv(cfd, &join_pkt, sizeof join_pkt, 0);
         assert(join_pkt.packet_type == JOIN);
+        server_packet_t ack = { .packet_type = ACK };
+        send(cfd, &ack, sizeof ack, 0);
     }
     for (int i = 0; i < NUM_PORTS; ++i) close(server_fds[i]);
 
@@ -184,13 +187,20 @@ int main(int argc, char **argv) {
                 server_packet_t resp;
                 int ok = handle_client_action(&game, pid, &in, &resp);
                 send(game.sockets[pid], &resp, sizeof resp, 0);
+
                 if (ok == 0 && resp.packet_type == ACK) {
+                    has_acted[pid] = 1;
+
                     if (in.packet_type == RAISE) {
+                        for (int i = 0; i < MAX_PLAYERS; ++i) {
+                            has_acted[i] = (i == pid) ? 1 : 0;
+                        }
                         num_active = count_active_players();
                         actions    = 1;
                     } else {
                         ++actions;
                     }
+
                     int live = count_active_players();
                     if (live <= 1) {
                         done = true;
