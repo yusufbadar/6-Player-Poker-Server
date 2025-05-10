@@ -45,7 +45,8 @@ case CHECK:
         out->packet_type = NACK;
         return -1;
     }
-    has_acted[pid] = 1;
+    for (int i = 0; i < MAX_PLAYERS; ++i)
+        has_acted[i] = (i == pid);    
     break;
 
 case CALL:
