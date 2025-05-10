@@ -52,17 +52,17 @@ void log_info_packet(const info_packet_t *info) {
     log_info("[INFO_PACKET] Your Cards: %s %s", 
              card_name(info->player_cards[0]), 
              card_name(info->player_cards[1]));
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        log_info("[INFO_PACKET] Player %d: stack=%d, bet=%d, status=%d",
-                 i, info->player_stacks[i],
-                 info->player_bets[i],
-                 info->player_status[i]);
-    }
 
     for (int i = 0; i < 5; i++) {
-        if (info->community_cards[i] != NOCARD)
-            log_info("[INFO_PACKET] Community Card %d: %s",
-                     i, card_name(info->community_cards[i]));
+        if (info->community_cards[i] != NOCARD) {
+            log_info("[INFO_PACKET] Community Card %d: %s", i, card_name(info->community_cards[i]));
+        }
+    }
+
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        log_info("[INFO_PACKET] Player %d: stack=%d, bet=%d, status=%d", 
+                 i, info->player_stacks[i], info->player_bets[i], info->player_status[i]);
+    }
 }
 
 void log_end_packet(const end_packet_t *end) {
