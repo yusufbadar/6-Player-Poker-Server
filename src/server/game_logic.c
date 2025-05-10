@@ -34,23 +34,6 @@ player_id_t next_active_player(game_state_t *g, player_id_t start)
     return -1;
 }
 
-void init_deck(card_t deck[DECK_SIZE], int seed)
-{
-    srand(seed);
-    int i = 0;
-    for (int s = 0; s < 4; ++s)
-        for (int r = 0; r < 13; ++r)
-            deck[i++] = (r << SUITE_BITS) | s;
-}
-
-void shuffle_deck(card_t deck[DECK_SIZE])
-{
-    for (int i = 0; i < DECK_SIZE - 1; ++i) {
-        int j = i + rand() % (DECK_SIZE - i);
-        card_t t = deck[i]; deck[i] = deck[j]; deck[j] = t;
-    }
-}
-
 void init_game_state(game_state_t *g, int stack, int seed)
 {
     memset(g, 0, sizeof *g);
@@ -72,8 +55,10 @@ void reset_game_state(game_state_t *g)
 {
     shuffle_deck(g->deck);
     g->next_card = 0;
-    g->round_stage = ROUND_INIT;
-    g->pot_size = g->highest_bet = 0;
+     g->round_stage = ROUND_INIT;
+    g->pot_size    = 0;
+    g->highest_bet = 0;
+    shuffle_deck(g->deck);
     memset(g->community_cards, NOCARD, sizeof g->community_cards);
     memset(g->current_bets, 0, sizeof g->current_bets);
     memset(has_acted, 0, sizeof has_acted);
@@ -81,7 +66,10 @@ void reset_game_state(game_state_t *g)
 
     for (int i = 1; i <= MAX_PLAYERS; ++i) {
         int cand = (g->dealer_player + i) % MAX_PLAYERS;
-        if (g->player_status[cand] != PLAYER_LEFT) { g->dealer_player = cand; break; }
+        if (g->player_status[cand] != PLAYER_LEFT) {
+            g->dealer_player = cand;
+            break;
+        }
     }
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         g->player_hands[p][0] = g->player_hands[p][1] = NOCARD;
@@ -110,10 +98,11 @@ void server_deal(game_state_t *g)
 int check_betting_end(game_state_t *g)
 {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (!has_acted[p]) return 0;
-            if (g->current_bets[p] < g->highest_bet && g->player_stacks[p] > 0) return 0;
-        }
+        if (g->player_status[p] == PLAYER_ACTIVE ||
+            g->player_status[p] == PLAYER_ALLIN) {
+             if (!has_acted[p]) return 0;
+             if (g->current_bets[p] < g->highest_bet && g->player_stacks[p] > 0) return 0;
+         }
     }
     return 1;
 }
@@ -128,7 +117,7 @@ void server_community(game_state_t *g)
     }
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted, 0, sizeof has_acted);
+    memset(has_acted,      0, sizeof has_acted);
     last_raiser = -1;
     g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
