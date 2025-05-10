@@ -136,21 +136,6 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
-        int num_active = 0;
-        for (int i = 0; i < MAX_PLAYERS; ++i)
-            if (game.player_status[i] == PLAYER_ACTIVE)
-                num_active++;
-        for (int card = 0; card < HAND_SIZE; ++card) {
-            int dealt = 0, offset = 1;
-            while (dealt < num_active) {
-                player_id_t p = (game.dealer_player + offset) % MAX_PLAYERS;
-                if (game.player_status[p] == PLAYER_ACTIVE) {
-                    game.player_hands[p][card] = game.deck[game.next_card++];
-                    dealt++;
-                }
-                offset++;
-            }
-        }
         server_deal(&game);
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
