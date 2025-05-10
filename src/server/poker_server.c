@@ -143,8 +143,8 @@ int main(int argc, char **argv)
             }
         }
         server_deal(&game);
-        memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
-        server_community(&game);
+        game.current_player = next_active_player( &game, (game.dealer_player + 1) % MAX_PLAYERS); 
+        memset(has_acted, 0, sizeof(has_acted));
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
             if (game.player_status[s] == PLAYER_LEFT) continue;
