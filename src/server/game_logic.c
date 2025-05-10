@@ -173,7 +173,10 @@ int evaluate_hand(game_state_t *game, player_id_t pid) {
 }
 
 int find_winner(game_state_t *game) {
-    //We wrote this function that looks at the game state and returns the player id for the best 5 card hand.
-    (void) game;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game->player_status[i] == PLAYER_ACTIVE) {
+            return i;
+        }
+    }
     return -1;
 }
