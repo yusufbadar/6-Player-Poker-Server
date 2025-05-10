@@ -115,6 +115,11 @@ void server_deal(game_state_t *g)
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         if (g->player_status[p] == PLAYER_ACTIVE) {
             g->player_hands[p][0] = g->deck[g->next_card++];
+        }
+    }
+
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        if (g->player_status[p] == PLAYER_ACTIVE) {
             g->player_hands[p][1] = g->deck[g->next_card++];
         }
     }
