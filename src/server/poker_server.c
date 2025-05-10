@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
             break;
         }
 
-        reset_game_state_local(&game);
+        reset_game_state(&game);
         if (game.dealer_player < 0) {
             for (int i = 0; i < MAX_PLAYERS; ++i) {
                 if (game.player_status[i] == PLAYER_ACTIVE) {
