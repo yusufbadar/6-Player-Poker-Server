@@ -136,6 +136,12 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
+        for (int i = 0; i < MAX_PLAYERS; ++i) {
+            if (game.player_status[i] == PLAYER_ACTIVE) {
+                game.player_hands[i][0] = game.deck[game.next_card++];
+                game.player_hands[i][1] = game.deck[game.next_card++];
+            }
+        }
         server_deal(&game);
         for (int p = 0; p < MAX_PLAYERS; ++p) {
             if (game.player_status[p] == PLAYER_ACTIVE) {
