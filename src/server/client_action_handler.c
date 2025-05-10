@@ -71,7 +71,7 @@ case CALL:
     break;
 
 case RAISE: {
-    int raise_amt = in->raise_amount;
+    int raise_amt = in->params[0];
     if (raise_amt <= 0) {
         out->packet_type = NACK;
         return -1;
