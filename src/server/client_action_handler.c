@@ -71,13 +71,12 @@ case CALL:
     break;
 
 case RAISE: {
-    int raise_amt = in->params[0];
-    if (raise_amt <= 0) {
+    int raise_to = in->params[0];    
+    if (raise_to <= g->highest_bet) {
         out->packet_type = NACK;
         return -1;
     }
-    int new_bet = g->highest_bet + raise_amt;
-    cost = new_bet - g->current_bets[pid];
+    cost = raise_to - g->current_bets[pid];
     
     if (g->player_stacks[pid] < cost) {
         out->packet_type = NACK;
@@ -86,7 +85,7 @@ case RAISE: {
     g->player_stacks[pid] -= cost;
     g->current_bets[pid] += cost;
     g->pot_size += cost;
-    g->highest_bet = new_bet;
+    g->highest_bet = raise_to;
 
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         if (i == pid)   has_acted[i] = 1;
