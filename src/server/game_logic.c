@@ -120,8 +120,8 @@ void server_deal(game_state_t *g)
     g->highest_bet  = 0;
     g->pot_size     = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted,     0, sizeof has_acted);
-    last_raiser     = -1;
+    memset(has_acted, 0, sizeof has_acted);
+    last_raiser = -1;
 }
 
 int server_bet(game_state_t *g) { 
