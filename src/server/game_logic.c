@@ -9,6 +9,9 @@
 #include "client_action_handler.h"
 #include "game_logic.h"
 
+#define RANK_MASK  0xF0
+#define SUIT_MASK  0x0F
+
 extern int has_acted[MAX_PLAYERS];
 extern int last_raiser;
 
@@ -109,14 +112,13 @@ int server_ready(game_state_t *game) {
 
 void server_deal(game_state_t *g)
 {
-    for (int i = 0; i < 3; ++i)
-        g->community_cards[i] = g->deck[g->next_card++];
-    g->round_stage   = ROUND_FLOP;
-    g->highest_bet   = 0;
+    g->round_stage = ROUND_PREFLOP;
+    g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted,       0, sizeof has_acted);
+    memset(has_acted, 0, sizeof has_acted);
     last_raiser = -1;
 }
+
 
 int server_bet(game_state_t *g) { 
     return check_betting_end(g); 
@@ -137,42 +139,65 @@ int check_betting_end(game_state_t *g)
 void server_community(game_state_t *g)
 {
     switch (g->round_stage) {
-
-    case ROUND_PREFLOP:
-    for (int i = 0; i < 3; ++i)
-        g->community_cards[i] = g->deck[g->next_card++];
-    g->round_stage = ROUND_FLOP;
-    break;
-
-    case ROUND_FLOP:
-        g->community_cards[3] = g->deck[g->next_card++];
-        g->round_stage = ROUND_TURN;
-        break;
-
-    case ROUND_TURN:
-        g->community_cards[4] = g->deck[g->next_card++];
-        g->round_stage = ROUND_RIVER;
-        break;
-    default:
-        break;
+        case ROUND_PREFLOP:
+            for (int i = 0; i < 3; i++)
+                g->community_cards[i] = g->deck[g->next_card++];
+            g->round_stage = ROUND_FLOP;
+            break;
+            
+        case ROUND_FLOP:
+            g->community_cards[3] = g->deck[g->next_card++];
+            g->round_stage = ROUND_TURN;
+            break;
+            
+        case ROUND_TURN:
+            g->community_cards[4] = g->deck[g->next_card++];
+            g->round_stage = ROUND_RIVER;
+            break;
+            
+        default:
+            break;
     }
 
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof(g->current_bets));
-    g->current_player =
-        next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
+    memset(has_acted, 0, sizeof(has_acted));
+    last_raiser = -1;
+    g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
 
 int evaluate_hand(game_state_t *game, player_id_t pid) {
-    //We wrote a function to compare a "value" for each players hand (to make comparison easier)
-    //Feel free to not do this.
-    (void) game;
-    (void) pid;
-    return 0;
+    card_t all_cards[7];
+    all_cards[0] = game->player_hands[pid][0];
+    all_cards[1] = game->player_hands[pid][1];
+    
+    int cc = 0;
+    for (int i = 0; i < MAX_COMMUNITY_CARDS; i++) {
+        if (game->community_cards[i] != NOCARD) {
+            all_cards[2 + cc++] = game->community_cards[i];
+        }
+    }
+    
+    int max_rank = 0;
+    for (int i = 0; i < 2 + cc; i++) {
+        int rank = (all_cards[i] & RANK_MASK) >> 4;  // Extract rank
+        if (rank > max_rank) max_rank = rank;
+    }
+    return max_rank;
 }
 
 int find_winner(game_state_t *game) {
-    //We wrote this function that looks at the game state and returns the player id for the best 5 card hand.
-    (void) game;
-    return -1;
+    int best_score = -1;
+    int winner = -1;
+    
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game->player_status[i] == PLAYER_ACTIVE) {
+            int score = evaluate_hand(game, i);
+            if (score > best_score) {
+                best_score = score;
+                winner = i;
+            }
+        }
+    }
+    return winner;
 }
