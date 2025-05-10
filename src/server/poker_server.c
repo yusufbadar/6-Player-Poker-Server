@@ -24,6 +24,23 @@ static int  server_fds[NUM_PORTS] = { -1 };
 
 game_state_t game;
 
+void init_deck(card_t deck[DECK_SIZE], int seed)
+{
+    srand(seed);
+    int i = 0;
+    for (int s = 0; s < 4; ++s)
+        for (int r = 0; r < 13; ++r)
+            deck[i++] = (r << SUITE_BITS) | s;   /* 2♣ … A♠ packed as 4‑bit rank|suit */
+}
+
+void shuffle_deck(card_t deck[DECK_SIZE])
+{
+    for (int i = 0; i < DECK_SIZE - 1; ++i) {
+        int j = i + rand() % (DECK_SIZE - i);    /* unbiased Fisher–Yates */
+        card_t tmp = deck[i]; deck[i] = deck[j]; deck[j] = tmp;
+    }
+}
+
 static int recv_full(int fd, void *buf, size_t len)
 {
     size_t r = 0;
