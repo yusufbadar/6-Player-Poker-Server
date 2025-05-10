@@ -142,8 +142,6 @@ int main(int argc, char **argv)
                game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
-
-        server_deal(&game);
         memset(has_acted, 0, sizeof(int) * MAX_PLAYERS);
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
