@@ -75,11 +75,6 @@ player_id_t next_active_player(game_state_t *g, player_id_t start)
 }
 void reset_game_state(game_state_t *g)
 {
-    int new_dealer = game->dealer_player;
-    do {
-        new_dealer = (new_dealer + 1) % MAX_PLAYERS;
-    } while (game->player_status[new_dealer] != PLAYER_ACTIVE);
-    game->dealer_player = new_dealer;
     shuffle_deck(g->deck);
     g->next_card   = 0;
 
