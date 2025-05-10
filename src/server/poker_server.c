@@ -171,8 +171,9 @@ int main(int argc, char **argv)
                 }
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
+                int ended = check_betting_end(&game);
 
-                if (acknack.packet_type == ACK) {
+                if (acknack.packet_type == ACK && !ended) {
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
