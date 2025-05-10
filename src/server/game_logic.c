@@ -15,7 +15,6 @@
 extern int has_acted[MAX_PLAYERS];
 extern int last_raiser;
 
-
 //Feel free to add your own code. I stripped out most of our solution functions but I left some "breadcrumbs" for anyone lost
 
 // for debugging
@@ -45,7 +44,6 @@ void shuffle_deck(card_t deck[DECK_SIZE])
 //You dont need to use this if you dont want, but we did.
 void init_game_state(game_state_t *game, int starting_stack, int random_seed)
 {
-    game->dealer_player = 0;
     memset(game, 0, sizeof(game_state_t));
     init_deck(game->deck, random_seed);
 
