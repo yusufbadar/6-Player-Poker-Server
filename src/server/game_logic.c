@@ -128,20 +128,25 @@ static player_id_t first_active_after(game_state_t *g, player_id_t start)
 
 static player_id_t first_active_from(game_state_t *g, player_id_t start)
 {
-    for (int p = start; p < MAX_PLAYERS; ++p)
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        player_id_t p = (start + i) % MAX_PLAYERS;
         if (g->player_status[p] == PLAYER_ACTIVE)
             return p;
-    return first_active_from(g, 0);
+    }
+    return (player_id_t)-1;
 }
-
 void server_deal(game_state_t *g)
 {
     for (player_id_t pid = 0; pid < MAX_PLAYERS; ++pid) {
-        if (g->player_status[pid] == PLAYER_ACTIVE) {
+        if (g->player_status[pid] == PLAYER_ACTIVE)
             g->player_hands[pid][0] = g->deck[g->next_card++];
-            g->player_hands[pid][1] = g->deck[g->next_card++];
-        }
     }
+
+    for (player_id_t pid = 0; pid < MAX_PLAYERS; ++pid) {
+        if (g->player_status[pid] == PLAYER_ACTIVE)
+            g->player_hands[pid][1] = g->deck[g->next_card++];
+    }
+
 
     g->round_stage = ROUND_PREFLOP;
     g->highest_bet = 0;
