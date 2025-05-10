@@ -3,26 +3,23 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
-
 #include "poker_client.h"
 #include "client_action_handler.h"
 #include "game_logic.h"
 #include "logs.h"
 
-int has_acted   [MAX_PLAYERS] = {0};
-int last_raiser               = -1;
+int has_acted[MAX_PLAYERS] = {0};
+int last_raiser = -1;
 
-
-void print_game_state(game_state_t *g) { (void)g; /* add your own prints */ }
-
+void print_game_state(game_state_t *g) { (void)g; }
 
 void init_deck(card_t deck[DECK_SIZE], int seed)
 {
     srand(seed);
-    int i = 0;
-    for (int rank = 0; rank < 13; ++rank)
-        for (int suit = 0; suit < 4; ++suit)
-            deck[i++] = (rank << SUITE_BITS) | suit;
+    int idx = 0;
+    for (int r = 0; r < 13; ++r)
+        for (int s = 0; s < 4; ++s)
+            deck[idx++] = (r << SUITE_BITS) | s;
 }
 
 void shuffle_deck(card_t deck[DECK_SIZE])
@@ -30,11 +27,10 @@ void shuffle_deck(card_t deck[DECK_SIZE])
     for (int i = 0; i < DECK_SIZE - 1; ++i) {
         int j = rand() % DECK_SIZE;
         card_t tmp = deck[i];
-        deck[i]   = deck[j];
-        deck[j]   = tmp;
+        deck[i] = deck[j];
+        deck[j] = tmp;
     }
 }
-
 
 static player_id_t first_active_after(const game_state_t *g, player_id_t start)
 {
@@ -56,42 +52,34 @@ player_id_t next_active_player(const game_state_t *g, player_id_t start)
     return (player_id_t)-1;
 }
 
-
 void init_game_state(game_state_t *g, int starting_stack, int seed)
 {
     memset(g, 0, sizeof *g);
-
     init_deck(g->deck, seed);
-
-    g->round_stage    = ROUND_JOIN;
-    g->dealer_player  = 0;
+    g->round_stage = ROUND_JOIN;
+    g->dealer_player = 0;
     g->current_player = 0;
-    g->next_card      = 0;
-
+    g->next_card = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p) {
-        g->player_stacks [p] = starting_stack;
-        g->player_status [p] = PLAYER_LEFT;
-        g->sockets       [p] = -1;
+        g->player_stacks[p] = starting_stack;
+        g->player_status[p] = PLAYER_LEFT;
+        g->sockets[p] = -1;
         g->player_hands[p][0] = g->player_hands[p][1] = NOCARD;
     }
-
     memset(g->community_cards, NOCARD, sizeof g->community_cards);
 }
 
 void reset_game_state(game_state_t *g)
 {
     shuffle_deck(g->deck);
-
-    g->next_card   = 0;
+    g->next_card = 0;
     g->round_stage = ROUND_INIT;
-    g->pot_size    = 0;
+    g->pot_size = 0;
     g->highest_bet = 0;
-
     memset(g->community_cards, NOCARD, sizeof g->community_cards);
-    memset(g->current_bets,    0,      sizeof g->current_bets);
-    memset(has_acted,          0,      sizeof has_acted);
+    memset(g->current_bets, 0, sizeof g->current_bets);
+    memset(has_acted, 0, sizeof has_acted);
     last_raiser = -1;
-
     for (int i = 1; i <= MAX_PLAYERS; ++i) {
         int cand = (g->dealer_player + i) % MAX_PLAYERS;
         if (g->player_status[cand] != PLAYER_LEFT) {
@@ -102,10 +90,8 @@ void reset_game_state(game_state_t *g)
     for (int p = 0; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] != PLAYER_LEFT)
             g->player_status[p] = PLAYER_ACTIVE;
-
     g->current_player = next_active_player(g, (g->dealer_player + 1) % MAX_PLAYERS);
 }
-
 
 void server_join(game_state_t *g)
 {
@@ -120,53 +106,45 @@ void server_join(game_state_t *g)
 int server_ready(game_state_t *g)
 {
     int pid = g->current_player;
-    static int  ready_count             = 0;
-    static int  ready_seen [MAX_PLAYERS] = {0};
-
+    static int ready_count = 0;
+    static int ready_seen[MAX_PLAYERS] = {0};
     if (!ready_seen[pid]) {
         ready_seen[pid] = 1;
         ready_count++;
         log_info("Player %d is ready (%d/%d)", pid, ready_count, MAX_PLAYERS);
     }
-
     if (ready_count < MAX_PLAYERS)
         return 0;
-
     memset(ready_seen, 0, sizeof ready_seen);
     ready_count = 0;
-
     reset_game_state(g);
     server_deal(g);
-
     return 1;
 }
-
 
 void server_deal(game_state_t *g)
 {
     for (player_id_t p = 0; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] == PLAYER_ACTIVE)
             g->player_hands[p][0] = g->deck[g->next_card++];
-
     for (player_id_t p = 0; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] == PLAYER_ACTIVE)
             g->player_hands[p][1] = g->deck[g->next_card++];
-
     g->round_stage = ROUND_PREFLOP;
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted,      0, sizeof has_acted);
+    memset(has_acted, 0, sizeof has_acted);
     last_raiser = -1;
-
     g->current_player = first_active_after(g, g->dealer_player);
 }
 
-int check_betting_end(const game_state_t *g)
+int check_betting_end(game_state_t *g)
 {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         if (g->player_status[p] == PLAYER_ACTIVE ||
             g->player_status[p] == PLAYER_ALLIN) {
-            if (!has_acted[p])                                  return 0;
+            if (!has_acted[p])
+                return 0;
             if (g->current_bets[p] < g->highest_bet && g->player_stacks[p] > 0)
                 return 0;
         }
@@ -178,7 +156,6 @@ int server_bet(game_state_t *g)
 {
     if (check_betting_end(g))
         return 1;
-
     g->current_player = first_active_after(g, g->current_player);
     return 0;
 }
@@ -202,12 +179,10 @@ void server_community(game_state_t *g)
         default:
             break;
     }
-
     g->highest_bet = 0;
     memset(g->current_bets, 0, sizeof g->current_bets);
-    memset(has_acted,      0, sizeof has_acted);
+    memset(has_acted, 0, sizeof has_acted);
     last_raiser = -1;
-
     g->current_player = first_active_after(g, g->dealer_player);
 }
 
@@ -215,14 +190,12 @@ void server_end(game_state_t *g)
 {
     int winner = find_winner(g);
     log_info("Hand ended, winner = %d", winner);
-
     g->player_stacks[winner] += g->pot_size;
-    g->round_stage            = ROUND_SHOWDOWN;
+    g->round_stage = ROUND_SHOWDOWN;
 }
 
-
-#define RANK(c) (((c) & 0xF0) >> 4)
-#define SUIT(c)  ((c) & 0x0F)
+#define CARD_RANK(c) (((c) & 0xF0) >> 4)
+#define CARD_SUIT(c)  ((c) & 0x0F)
 
 static int pack_detail(const int *vals, int n)
 {
@@ -236,130 +209,148 @@ static int hand_value(card_t *cards, int count)
 {
     int rank_cnt[13] = {0}, suit_cnt[4] = {0};
     for (int i = 0; i < count; ++i) {
-        int r = RANK(cards[i]);
-        int s = SUIT(cards[i]);
+        int r = CARD_RANK(cards[i]);
+        int s = CARD_SUIT(cards[i]);
         rank_cnt[r]++;
-        suit_cnt[s]++;
+        suit_cnt[s]++;                
     }
-
-    int uniq[13];
-    int u = 0;
+    int uniq[14], u = 0;
     for (int r = 12; r >= 0; --r)
         if (rank_cnt[r])
             uniq[u++] = r;
     if (rank_cnt[12])
         uniq[u++] = -1;
-
     int best_sf = -1;
     for (int s = 0; s < 4; ++s) if (suit_cnt[s] >= 5) {
         int sr[7], m = 0;
-        for (int i = 0; i < count; ++i) if (SUIT(cards[i]) == s)
-            sr[m++] = RANK(cards[i]);
-        qsort(sr, m, sizeof *sr, (int(*)(const void*,const void*))strcmp);
-        int uniq_sr[7], k = 0, last = -2;
-        for (int i = 0; i < m; ++i) if (sr[i] != last) {
-            uniq_sr[k++] = sr[i];
-            last = sr[i];
-        }
-        if (last == 12) uniq_sr[k++] = -1;
-        for (int i = 0; i + 4 < k; ++i) if (uniq_sr[i] - uniq_sr[i+4] == 4) {
-            best_sf = uniq_sr[i] < 0 ? 3 : uniq_sr[i];
+        for (int i = 0; i < count; ++i)
+            if (CARD_SUIT(cards[i]) == s)
+                sr[m++] = CARD_RANK(cards[i]);
+        qsort(sr, m, sizeof *sr, (__compar_fn_t)strcmp);
+        int uniq_sr[8], k = 0, last = -2;
+        for (int i = 0; i < m; ++i)
+            if (sr[i] != last) {
+                uniq_sr[k++] = sr[i];
+                last = sr[i];
+            }
+        if (last == 12)
+            uniq_sr[k++] = -1;
+        for (int i = 0; i + 4 < k; ++i)
+            if (uniq_sr[i] - uniq_sr[i+4] == 4) {
+                best_sf = uniq_sr[i] < 0 ? 3 : uniq_sr[i];
+                break;
+            }
+        if (best_sf >= 0)
+            break;
+    }
+    if (best_sf >= 0)
+        return (8 << 20) | (best_sf << 16);
+    int four = -1;
+    for (int r = 12; r >= 0; --r)
+        if (rank_cnt[r] == 4) {
+            four = r;
             break;
         }
-        if (best_sf >= 0) break;
-    }
-    if (best_sf >= 0) return (8 << 20) | (best_sf << 16);
-
-    int four = -1;
-    for (int r = 12; r >= 0; --r) if (rank_cnt[r] == 4) { four = r; break; }
     if (four >= 0) {
-        int kicker = -1;
-        for (int r = 12; r >= 0; --r) if (r != four && rank_cnt[r]) { kicker = r; break; }
-        return (7 << 20) | (four << 16) | (kicker << 12);
+        int kc = -1;
+        for (int r = 12; r >= 0; --r)
+            if (r != four && rank_cnt[r]) {
+                kc = r;
+                break;
+            }
+        return (7 << 20) | (four << 16) | (kc << 12);
     }
-
     int three = -1, pair = -1;
     for (int r = 12; r >= 0; --r) if (rank_cnt[r] >= 3) { three = r; break; }
     if (three >= 0)
-        for (int r = 12; r >= 0; --r) if (r != three && rank_cnt[r] >= 2) { pair = r; break; }
+        for (int r = 12; r >= 0; --r)
+            if (r != three && rank_cnt[r] >= 2) {
+                pair = r;
+                break;
+            }
     if (three >= 0 && pair >= 0)
         return (6 << 20) | (three << 16) | (pair << 12);
-
-    for (int s = 0; s < 4; ++s) if (suit_cnt[s] >= 5) {
-        int vals[5], k = 0;
-        for (int r = 12; r >= 0 && k < 5; --r)
-            for (int i = 0; i < count && k < 5; ++i)
-                if (SUIT(cards[i]) == s && RANK(cards[i]) == r)
-                    vals[k++] = r;
-        return (5 << 20) | pack_detail(vals, 5);
-    }
-
+    for (int s = 0; s < 4; ++s)
+        if (suit_cnt[s] >= 5) {
+            int vals[5], k = 0;
+            for (int r = 12; r >= 0 && k < 5; --r)
+                for (int i = 0; i < count && k < 5; ++i)
+                    if (CARD_SUIT(cards[i]) == s && CARD_RANK(cards[i]) == r)
+                        vals[k++] = r;
+            return (5 << 20) | pack_detail(vals, 5);
+        }
     int top_st = -1;
     for (int i = 0; i + 4 < u; ++i) {
         int hi = uniq[i] < 0 ? 3 : uniq[i];
         int lo = uniq[i+4] < 0 ? 0 : uniq[i+4];
-        if (hi - lo == 4) { top_st = hi; break; }
+        if (hi - lo == 4) {
+            top_st = hi;
+            break;
+        }
     }
-    if (top_st >= 0) return (4 << 20) | (top_st << 16);
-
+    if (top_st >= 0)
+        return (4 << 20) | (top_st << 16);
     if (three >= 0) {
-        int kick[2], k = 0;
-        for (int r = 12; r >= 0 && k < 2; --r) if (r != three && rank_cnt[r]) kick[k++] = r;
-        return (3 << 20) | (three << 16) | pack_detail(kick, 2);
+        int kicks[2], k = 0;
+        for (int r = 12; r >= 0 && k < 2; --r)
+            if (r != three && rank_cnt[r])
+                kicks[k++] = r;
+        return (3 << 20) | (three << 16) | pack_detail(kicks, 2);
     }
-
-    /* two‑pair */
-    int first = -1, second = -1;
+    int p1 = -1, p2 = -1;
     for (int r = 12; r >= 0; --r)
         if (rank_cnt[r] >= 2) {
-            if (first == -1)      first  = r;
-            else if (second == -1) { second = r; break; }
+            if (p1 < 0)
+                p1 = r;
+            else if (p2 < 0)
+                p2 = r;
+            if (p1 >= 0 && p2 >= 0)
+                break;
         }
-    if (second >= 0) {
+    if (p2 >= 0) {
         int kc = -1;
-        for (int r = 12; r >= 0; --r) if (r != first && r != second && rank_cnt[r]) { kc = r; break; }
-        int vals[3] = { first, second, kc };
+        for (int r = 12; r >= 0; --r)
+            if (r != p1 && r != p2 && rank_cnt[r]) {
+                kc = r;
+                break;
+            }
+        int vals[3] = {p1, p2, kc};
         return (2 << 20) | pack_detail(vals, 3);
     }
-
-    if (first >= 0) {
-        int kick[3], k = 0;
-        for (int r = 12; r >= 0 && k < 3; --r) if (r != first && rank_cnt[r]) kick[k++] = r;
-        int vals[4] = { first, kick[0], kick[1], kick[2] };
+    if (p1 >= 0) {
+        int kicks[3], k = 0;
+        for (int r = 12; r >= 0 && k < 3; --r)
+            if (r != p1 && rank_cnt[r])
+                kicks[k++] = r;
+        int vals[4] = {p1, kicks[0], kicks[1], kicks[2]};
         return (1 << 20) | pack_detail(vals, 4);
     }
-
     int hc[5], h = 0;
-    for (int r = 12; r >= 0 && h < 5; --r) if (rank_cnt[r]) hc[h++] = r;
-    while (h < 5) hc[h++] = 0;
+    for (int r = 12; r >= 0 && h < 5; --r)
+        if (rank_cnt[r])
+            hc[h++] = r;
+    while (h < 5)
+        hc[h++] = 0;
     return pack_detail(hc, 5);
 }
 
 int evaluate_hand(game_state_t *g, player_id_t pid)
 {
-    card_t temp[7];
-    int n = 0;
-    if (g->player_hands[pid][0] != NOCARD) temp[n++] = g->player_hands[pid][0];
-    if (g->player_hands[pid][1] != NOCARD) temp[n++] = g->player_hands[pid][1];
+    card_t tmp[7]; int n = 0;
+    if (g->player_hands[pid][0] != NOCARD) tmp[n++] = g->player_hands[pid][0];
+    if (g->player_hands[pid][1] != NOCARD) tmp[n++] = g->player_hands[pid][1];
     for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
-        if (g->community_cards[i] != NOCARD) temp[n++] = g->community_cards[i];
-
-    return hand_value(temp, n);
+        if (g->community_cards[i] != NOCARD) tmp[n++] = g->community_cards[i];
+    return hand_value(tmp, n);
 }
 
 int find_winner(game_state_t *g)
 {
-    int best_pid = -1;
-    int best_val = -1;
-
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
+    int best_pid = -1, best_val = -1;
+    for (int p = 0; p < MAX_PLAYERS; ++p)
         if (g->player_status[p] == PLAYER_ACTIVE || g->player_status[p] == PLAYER_ALLIN) {
             int v = evaluate_hand(g, p);
-            if (v > best_val) {
-                best_val = v;
-                best_pid = p;
-            }
+            if (v > best_val) { best_val = v; best_pid = p; }
         }
-    }
     return best_pid;
 }
