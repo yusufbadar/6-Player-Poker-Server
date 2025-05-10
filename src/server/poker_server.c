@@ -17,8 +17,8 @@ extern player_id_t next_active_player(game_state_t *g, player_id_t start);
 #define BACKLOG     4
 #define MAX_PLAYERS 6
 
-int has_acted[MAX_PLAYERS] = {0};
-int last_raiser            = -1;
+extern int has_acted[MAX_PLAYERS];
+extern int last_raiser;
 
 static int  server_fds[NUM_PORTS] = { -1 };
 
