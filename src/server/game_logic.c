@@ -98,12 +98,13 @@ void reset_game_state(game_state_t *game)
         for (int c = 0; c < HAND_SIZE; ++c)
             game->player_hands[p][c] = NOCARD;
     }
-    int new_dealer = game->dealer_player;
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        new_dealer = (new_dealer + 1) % MAX_PLAYERS;
-        if (game->player_status[new_dealer] == PLAYER_ACTIVE) break;
+    if (prev_stage != ROUND_JOIN) {
+        int new_dealer = game->dealer_player;
+        do {
+            new_dealer = (new_dealer + 1) % MAX_PLAYERS;
+        } while (game->player_status[new_dealer] != PLAYER_ACTIVE);
+        game->dealer_player = new_dealer;
     }
-    game->dealer_player = new_dealer;
 }
 
 void server_join(game_state_t *game) {
