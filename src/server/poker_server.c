@@ -136,13 +136,15 @@ int main(int argc, char **argv)
         }
 
         reset_game_state(&game);
-        server_deal(&game);
         for (int p = 0; p < MAX_PLAYERS; ++p) {
             if (game.player_status[p] == PLAYER_ACTIVE) {
                 game.player_hands[p][0] = game.deck[game.next_card++];
                 game.player_hands[p][1] = game.deck[game.next_card++];
             }
         }
+        game.round_stage  = ROUND_PREFLOP;
+        game.highest_bet  = 0;
+        memset(game.current_bets, 0, sizeof(game.current_bets));
         memset(has_acted, 0, sizeof(has_acted));
         last_raiser = -1;
         for (int s = 0; s < NUM_PORTS; ++s) {
