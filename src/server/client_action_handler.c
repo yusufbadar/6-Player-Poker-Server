@@ -45,8 +45,7 @@ case CHECK:
         out->packet_type = NACK;
         return -1;
     }
-    for (int i = 0; i < MAX_PLAYERS; ++i)
-        has_acted[i] = (i == pid);    
+    has_acted[pid] = 1;  
     break;
 
 case CALL:
@@ -84,7 +83,7 @@ case RAISE: {
         out->packet_type = NACK;
         return -1;
     }
-
+    g->player_stacks[pid] -= cost;
     g->current_bets[pid] += cost;
     g->pot_size += cost;
     g->highest_bet = new_bet;

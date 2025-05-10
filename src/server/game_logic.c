@@ -98,6 +98,12 @@ void reset_game_state(game_state_t *game)
         for (int c = 0; c < HAND_SIZE; ++c)
             game->player_hands[p][c] = NOCARD;
     }
+    int new_dealer = game->dealer_player;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        new_dealer = (new_dealer + 1) % MAX_PLAYERS;
+        if (game->player_status[new_dealer] == PLAYER_ACTIVE) break;
+    }
+    game->dealer_player = new_dealer;
 }
 
 void server_join(game_state_t *game) {
@@ -123,14 +129,14 @@ void server_deal(game_state_t *g)
 int server_bet(game_state_t *g) { 
     return check_betting_end(g); 
 }
-int check_betting_end(game_state_t *g)
-{
+int check_betting_end(game_state_t *g) {
     for (int p = 0; p < MAX_PLAYERS; ++p) {
         if (g->player_status[p] == PLAYER_ACTIVE) {
-            if (g->current_bets[p] != g->highest_bet)
+            if (!has_acted[p] || 
+                (g->current_bets[p] < g->highest_bet && 
+                 g->player_stacks[p] > 0)) {
                 return 0;
-            if (!has_acted[p])
-                return 0;
+            }
         }
     }
     return 1;
@@ -138,13 +144,7 @@ int check_betting_end(game_state_t *g)
 
 void server_community(game_state_t *g)
 {
-    switch (g->round_stage) {
-        case ROUND_PREFLOP:
-            for (int i = 0; i < 3; i++)
-                g->community_cards[i] = g->deck[g->next_card++];
-            g->round_stage = ROUND_FLOP;
-            break;
-            
+    switch (g->round_stage) {    
         case ROUND_FLOP:
             g->community_cards[3] = g->deck[g->next_card++];
             g->round_stage = ROUND_TURN;
@@ -183,7 +183,17 @@ int evaluate_hand(game_state_t *game, player_id_t pid) {
         int rank = (all_cards[i] & RANK_MASK) >> 4;  // Extract rank
         if (rank > max_rank) max_rank = rank;
     }
-    return max_rank;
+    int rank_counts[13] = {0};
+    int pair_rank = -1;
+
+    for (int i = 0; i < 2 + cc; i++) {
+        int rank = (all_cards[i] & RANK_MASK) >> 4;
+        rank_counts[rank]++;
+        if (rank_counts[rank] == 2) pair_rank = rank;
+        if (rank > max_rank) max_rank = rank;
+    }
+
+    return (pair_rank != -1) ? (1 << 16) | (pair_rank << 8) | max_rank : max_rank;
 }
 
 int find_winner(game_state_t *game) {

@@ -177,13 +177,22 @@ int main(int argc, char **argv)
                 }
 
                 send(game.sockets[pid], &acknack, sizeof(acknack), 0);
-                
+
                 for (int s = 0; s < NUM_PORTS; ++s) {
                     if (game.player_status[s] == PLAYER_LEFT) continue;
                     server_packet_t info;
                     build_info_packet(&game, s, &info);
                     send(game.sockets[s], &info, sizeof(info), 0);
                 }
+                if (game.round_stage == ROUND_PREFLOP) {
+                server_community(&game);  // Deal flop
+            } else if (game.round_stage == ROUND_FLOP) {
+                server_community(&game);  // Deal turn
+            } else if (game.round_stage == ROUND_TURN) {
+                server_community(&game);  // Deal river
+            } else {
+                break;  // Showdown
+            }
             }
 
             int survivors = 0, surv = -1;
