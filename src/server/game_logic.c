@@ -259,11 +259,3 @@ int find_winner(game_state_t *game) {
     }
     return winner;
 }
-void settle_pot(game_state_t *g)
-{
-    int winner = find_winner(g);
-    if (winner < 0) return;
-
-    g->player_stacks[winner] += g->pot_size;
-    g->pot_size = 0;
-}
