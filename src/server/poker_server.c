@@ -21,8 +21,8 @@ typedef struct {
     struct sockaddr_in address;
 } player_t;
 
-int has_acted[MAX_PLAYERS] = {0};
-int last_raiser = -1;
+extern int has_acted[MAX_PLAYERS];
+extern int last_raiser;
 
 static int server_fds[NUM_PORTS];
 static game_state_t game;
