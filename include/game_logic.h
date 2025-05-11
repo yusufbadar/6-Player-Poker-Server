@@ -49,6 +49,7 @@ void shuffle_deck(card_t deck[DECK_SIZE]);
 int check_betting_end(game_state_t *game);
 int find_winner(game_state_t *game);
 int evaluate_hand(game_state_t *game, player_id_t pid);
+player_id_t next_active_player(const game_state_t *g, player_id_t start);
 
 void server_join(game_state_t *game);
 int server_ready(game_state_t *game);
