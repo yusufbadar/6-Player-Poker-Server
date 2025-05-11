@@ -53,7 +53,7 @@ int handle_client_action(game_state_t *game,
                 return -1;
             }
             int need = raise_amt - game->current_bets[pid];
-            if (need <= 0 || need > game->player_stacks[pid]) {
+            if (need < 0 || need > game->player_stacks[pid]) {
                 out->packet_type = NACK;
                 return -1;
             }
