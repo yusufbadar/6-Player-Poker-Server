@@ -15,9 +15,11 @@ void print_game_state(game_state_t *game) { (void) game; }
 void init_deck(card_t deck[DECK_SIZE], int seed) {
     srand(seed);
     int i = 0;
-    for (int r = 0; r < 13; ++r)
-        for (int s = 0; s < 4; ++s)
+    for (int r = 0; r < 13; ++r) {
+        for (int s = 0; s < 4; ++s) {
             deck[i++] = (r << SUITE_BITS) | s;
+        }
+    }
 }
 
 void shuffle_deck(card_t deck[DECK_SIZE]) {
@@ -41,8 +43,9 @@ void init_game_state(game_state_t *g, int starting_stack, int seed) {
         g->current_bets[i] = 0;
         g->player_hands[i][0] = g->player_hands[i][1] = NOCARD;
     }
-    for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
+    for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i) {
         g->community_cards[i] = NOCARD;
+    }
     g->next_card = 0;
     g->highest_bet = 0;
     g->pot_size = 0;
@@ -66,8 +69,12 @@ int server_ready(game_state_t *g) {
         ready_count++;
         log_info("Player %d is ready (%d/%d)", pid, ready_count, MAX_PLAYERS);
     }
-    if (ready_count < MAX_PLAYERS) return 0;
-    for (int i = 0; i < MAX_PLAYERS; ++i) ready_flags[i] = 0;
+    if (ready_count < MAX_PLAYERS){
+        return 0;
+    }
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        ready_flags[i] = 0;
+    }
     ready_count = 0;
     g->round_stage = ROUND_PREFLOP;
     g->next_card = 0;
@@ -79,18 +86,20 @@ int server_ready(game_state_t *g) {
 }
 
 void server_deal(game_state_t *g) {
-    for (int i = 0; i < MAX_PLAYERS; ++i)
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
         if (g->player_status[i] == PLAYER_ACTIVE) {
             g->player_hands[i][0] = g->deck[g->next_card++];
             g->player_hands[i][1] = g->deck[g->next_card++];
         }
+    }
 }
 
 int check_betting_end(game_state_t *game) {
-    for (int i = 0; i < MAX_PLAYERS; ++i)
-        if (game->player_status[i] == PLAYER_ACTIVE &&
-            game->current_bets[i] != game->highest_bet)
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        if (game->player_status[i] == PLAYER_ACTIVE && game->current_bets[i] != game->highest_bet) {
             return 0;
+        }
+    }
     return 1;
 }
 

@@ -30,10 +30,7 @@ static inline uint8_t visible_status(uint8_t s)
     }
 }
 
-int handle_client_action(game_state_t *g,
-                         player_id_t   pid,
-                         const client_packet_t *in,
-                         server_packet_t      *out)
+int handle_client_action(game_state_t *g, player_id_t pid, const client_packet_t *in, server_packet_t *out)
 {
     if (g->current_player != pid)
         return send_nack(out);
@@ -45,9 +42,9 @@ int handle_client_action(game_state_t *g,
             return (to_call == 0) ? send_ack(out) : send_nack(out);
 
         case CALL:
-            if (to_call <= 0 || to_call > g->player_stacks[pid])
+            if (to_call <= 0 || to_call > g->player_stacks[pid]){
                 return send_nack(out);
-
+            }
             g->player_stacks[pid] -= to_call;
             g->current_bets [pid] += to_call;
             g->pot_size           += to_call;
@@ -57,9 +54,9 @@ int handle_client_action(game_state_t *g,
         case RAISE: {
             const int chips_now = in->params[0];
 
-            if (chips_now <= to_call || chips_now > g->player_stacks[pid])
+            if (chips_now <= to_call || chips_now > g->player_stacks[pid]) {
                 return send_nack(out);
-
+            }
             g->player_stacks[pid] -= chips_now;
             g->current_bets [pid] += chips_now;
             g->pot_size           += chips_now;
@@ -131,8 +128,7 @@ void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out)
         e->player_status[p]    = visible_status(g->player_status[p]);
     }
 
-    memcpy(e->community_cards, g->community_cards,
-           MAX_COMMUNITY_CARDS * sizeof(card_t));
+    memcpy(e->community_cards, g->community_cards, MAX_COMMUNITY_CARDS * sizeof(card_t));
 
     e->pot_size = g->pot_size;
     e->dealer   = g->dealer_player;
