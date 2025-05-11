@@ -1,19 +1,19 @@
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+
 #include "client_action_handler.h"
 #include "game_logic.h"
 #include "logs.h"
 
-int handle_client_action(game_state_t *g, player_id_t pid, const client_packet_t *in, server_packet_t *out)
-{
-    memset(out, 0, sizeof(*out));
-
-    if (g->current_player != pid) {
+int handle_client_action(game_state_t *game, player_id_t pid, const client_packet_t *in, server_packet_t *out) {
+    if (game->current_player != pid) {
         out->packet_type = NACK;
         return -1;
     }
 
-    int to_call = g->highest_bet - g->current_bets[pid];
+    int to_call = game->highest_bet - game->current_bets[pid];
 
     switch (in->packet_type) {
         case CHECK:
@@ -25,41 +25,37 @@ int handle_client_action(game_state_t *g, player_id_t pid, const client_packet_t
             return 0;
 
         case CALL:
-            if (to_call <= 0 || to_call > g->player_stacks[pid]) {
+            if (to_call <= 0 || to_call > game->player_stacks[pid]) {
                 out->packet_type = NACK;
                 return -1;
             }
-            g->player_stacks[pid] -= to_call;
-            g->current_bets[pid] += to_call;
-            g->pot_size += to_call;
-            if (g->player_stacks[pid] == 0)
-                g->player_status[pid] = PLAYER_ALLIN;
+            game->player_stacks[pid] -= to_call;
+            game->current_bets[pid] += to_call;
+            game->pot_size += to_call;
             out->packet_type = ACK;
             return 0;
 
         case RAISE: {
             int raise_amt = in->params[0];
-            if (raise_amt <= g->highest_bet) {
+            if (raise_amt <= game->highest_bet) {
                 out->packet_type = NACK;
                 return -1;
             }
-            int need = raise_amt - g->current_bets[pid];
-            if (need > g->player_stacks[pid]) {
+            int need = raise_amt - game->current_bets[pid];
+            if (need > game->player_stacks[pid] || need < 0) {
                 out->packet_type = NACK;
                 return -1;
             }
-            g->player_stacks[pid] -= need;
-            g->current_bets[pid] += need;
-            g->highest_bet = raise_amt;
-            g->pot_size += need;
-            if (g->player_stacks[pid] == 0)
-                g->player_status[pid] = PLAYER_ALLIN;
+            game->player_stacks[pid] -= need;
+            game->current_bets[pid] += need;
+            game->highest_bet = raise_amt;
+            game->pot_size += need;
             out->packet_type = ACK;
             return 0;
         }
 
         case FOLD:
-            g->player_status[pid] = PLAYER_FOLDED;
+            game->player_status[pid] = PLAYER_FOLDED;
             out->packet_type = ACK;
             return 0;
 
@@ -69,61 +65,65 @@ int handle_client_action(game_state_t *g, player_id_t pid, const client_packet_t
     }
 }
 
-void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
-{
-    memset(out, 0, sizeof(*out));
+void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out) {
     out->packet_type = INFO;
+    info_packet_t *i = &out->info;
 
-    out->info.player_cards[0] = g->player_hands[pid][0];
-    out->info.player_cards[1] = g->player_hands[pid][1];
+    i->player_cards[0] = g->player_hands[pid][0];
+    i->player_cards[1] = g->player_hands[pid][1];
 
-    for (int i = 0; i < MAX_COMMUNITY_CARDS; ++i)
-        out->info.community_cards[i] = NOCARD;
+    for (int x = 0; x < MAX_COMMUNITY_CARDS; ++x) {
+        i->community_cards[x] = NOCARD;
+    }
 
     if (g->round_stage >= ROUND_FLOP) {
-        memcpy(out->info.community_cards, g->community_cards, 3 * sizeof(card_t));
-        if (g->round_stage >= ROUND_TURN)
-            out->info.community_cards[3] = g->community_cards[3];
-        if (g->round_stage >= ROUND_RIVER)
-            out->info.community_cards[4] = g->community_cards[4];
+        memcpy(i->community_cards, g->community_cards, 3 * sizeof(card_t));
+        if (g->round_stage >= ROUND_TURN) {
+            i->community_cards[3] = g->community_cards[3];
+            if (g->round_stage >= ROUND_RIVER) {
+                i->community_cards[4] = g->community_cards[4];
+            }
+        }
     }
 
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        out->info.player_stacks[i] = g->player_stacks[i];
-        out->info.player_bets[i] = g->current_bets[i];
-        if (g->player_status[i] == PLAYER_ACTIVE || g->player_status[i] == PLAYER_ALLIN)
-            out->info.player_status[i] = 1;
-        else if (g->player_status[i] == PLAYER_FOLDED)
-            out->info.player_status[i] = 0;
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        i->player_stacks[p] = g->player_stacks[p];
+        i->player_bets[p] = g->current_bets[p];
+        if (g->player_status[p] == PLAYER_ACTIVE || g->player_status[p] == PLAYER_ALLIN)
+            i->player_status[p] = 1;
+        else if (g->player_status[p] == PLAYER_FOLDED)
+            i->player_status[p] = 0;
         else
-            out->info.player_status[i] = 2;
+            i->player_status[p] = 2;
     }
 
-    out->info.pot_size = g->pot_size;
-    out->info.dealer = g->dealer_player;
-    out->info.player_turn = g->current_player;
-    out->info.bet_size = g->highest_bet;
+    i->pot_size = g->pot_size;
+    i->dealer = g->dealer_player;
+    i->player_turn = g->current_player;
+    i->bet_size = g->highest_bet;
 }
 
-void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out)
-{
-    memset(out, 0, sizeof(*out));
+void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out) {
     out->packet_type = END;
+    end_packet_t *e = &out->end;
 
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        out->end.player_cards[i][0] = g->player_hands[i][0];
-        out->end.player_cards[i][1] = g->player_hands[i][1];
-        out->end.player_stacks[i] = g->player_stacks[i];
-        if (g->player_status[i] == PLAYER_ACTIVE || g->player_status[i] == PLAYER_ALLIN)
-            out->end.player_status[i] = 1;
-        else if (g->player_status[i] == PLAYER_FOLDED)
-            out->end.player_status[i] = 0;
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        e->player_cards[p][0] = g->player_hands[p][0];
+        e->player_cards[p][1] = g->player_hands[p][1];
+        e->player_stacks[p] = g->player_stacks[p];
+
+        if (g->player_status[p] == PLAYER_ACTIVE || g->player_status[p] == PLAYER_ALLIN)
+            e->player_status[p] = 1;
+        else if (g->player_status[p] == PLAYER_FOLDED)
+            e->player_status[p] = 0;
         else
-            out->end.player_status[i] = 2;
+            e->player_status[p] = 2;
     }
 
-    memcpy(out->end.community_cards, g->community_cards, MAX_COMMUNITY_CARDS * sizeof(card_t));
-    out->end.pot_size = g->pot_size;
-    out->end.dealer = g->dealer_player;
-    out->end.winner = winner;
+    for (int x = 0; x < MAX_COMMUNITY_CARDS; ++x)
+        e->community_cards[x] = g->community_cards[x];
+
+    e->pot_size = g->pot_size;
+    e->dealer = g->dealer_player;
+    e->winner = winner;
 }
