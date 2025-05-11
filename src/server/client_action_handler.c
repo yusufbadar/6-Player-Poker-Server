@@ -101,6 +101,12 @@ void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out) {
     i->dealer = g->dealer_player;
     i->player_turn = g->current_player;
     i->bet_size = g->highest_bet;
+    log_info("[INFO_PACKET] pot_size=%d, player_turn=%d, dealer=%d, bet_size=%d",
+             i->pot_size, i->player_turn, i->dealer, i->bet_size);
+    char buf0[4], buf1[4];
+    card_to_string(i->player_cards[0], buf0);
+    card_to_string(i->player_cards[1], buf1);
+    log_info("[INFO_PACKET] Your Cards: %s %s", buf0, buf1);
 }
 
 void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out) {
