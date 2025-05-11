@@ -124,6 +124,8 @@ int main(int argc, char **argv) {
             } else if (pkt.packet_type == READY) {
                 game.player_status[i] = PLAYER_ACTIVE;
                 ready_count++;
+                server_packet_t ready_ack = { .packet_type = ACK };
+                send(fd, &ready_ack, sizeof(ready_ack), 0);
             }
         }
 
@@ -155,6 +157,7 @@ int main(int argc, char **argv) {
         }
 
         server_deal(&game);
+        game.current_player = next_active_player(&game, game.dealer_player);
         broadcast_info();
 
         for (int round = 0; round < 4; round++) {
@@ -190,7 +193,7 @@ int main(int argc, char **argv) {
                     }
 
                     if (actions < num_active) {
-                        game.current_player = count_active_players(&game, game.current_player);
+                        game.current_player = next_active_player(&game, game.current_player);
                         broadcast_info();
                     }
                 }
