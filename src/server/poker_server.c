@@ -13,46 +13,25 @@
 #include "client_action_handler.h"
 #include "game_logic.h"
 
-#define BASE_PORT     2201
-#define NUM_PORTS     6
-#define BUFFER_SIZE   1024
+#define BASE_PORT       2201
+#define NUM_PORTS       6
+#define BUFFER_SIZE     1024
 
 // Track who has acted each street
 int has_acted[MAX_PLAYERS] = {0};
 int last_raiser = -1;
 // Global game state
-game_state_t game;
+static game_state_t game;
+static int listener_fds[NUM_PORTS];
 
-// Reset deck, bets, hands, community cards
-void reset_game_state(game_state_t *g) {
-    shuffle_deck(g->deck);
-    g->round_stage    = ROUND_INIT;
-    g->next_card      = 0;
-    g->highest_bet    = 0;
-    g->pot_size       = 0;
-    
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        if (g->player_status[p] != PLAYER_LEFT)
-            g->player_status[p] = PLAYER_ACTIVE;
-        g->current_bets[p] = 0;
-        g->player_hands[p][0] = g->player_hands[p][1] = NOCARD;
+// Helper: Broadcast a packet to all connected players
+static void broadcast_all(const server_packet_t *pkt) {
+    for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
+        int fd = game.sockets[pid];
+        if (fd >= 0) send(fd, pkt, sizeof(*pkt), 0);
     }
-    for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c)
-        g->community_cards[c] = NOCARD;
 }
 
-// Rotate to next active player
-static player_id_t next_active_player(void) {
-    int cur = game.current_player;
-    for (int i = 0; i < MAX_PLAYERS; ++i) {
-        cur = (cur + 1) % MAX_PLAYERS;
-        if (game.player_status[cur] == PLAYER_ACTIVE)
-            return cur;
-    }
-    return -1;
-}
-
-// Broadcast INFO packet to all
 static void broadcast_info(void) {
     server_packet_t pkt;
     for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
@@ -63,200 +42,188 @@ static void broadcast_info(void) {
     }
 }
 
-// Broadcast END packet
 static void broadcast_end(int winner) {
     server_packet_t pkt;
     build_end_packet(&game, winner, &pkt);
-    for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
-        int fd = game.sockets[pid];
-        if (fd < 0) continue;
-        send(fd, &pkt, sizeof(pkt), 0);
+    broadcast_all(&pkt);
+}
+
+// Rotate to the next active player
+static player_id_t next_active_player(void) {
+    for (int i = 0, cur = game.current_player; i < MAX_PLAYERS; ++i) {
+        cur = (cur + 1) % MAX_PLAYERS;
+        if (game.player_status[cur] == PLAYER_ACTIVE)
+            return cur;
     }
+    return -1;
 }
 
 // Count still-active players
 static int count_active_players(void) {
-    int n = 0;
+    int cnt = 0;
     for (int p = 0; p < MAX_PLAYERS; ++p)
         if (game.player_status[p] == PLAYER_ACTIVE)
-            ++n;
-    return n;
+            cnt++;
+    return cnt;
+}
+
+// Reset per-hand state
+static void start_new_hand(void) {
+    shuffle_deck(game.deck);
+    game.round_stage    = ROUND_INIT;
+    game.next_card      = 0;
+    game.highest_bet    = 0;
+    game.pot_size       = 0;
+    memset(game.current_bets, 0, sizeof game.current_bets);
+    memset(has_acted, 0, sizeof has_acted);
+
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        if (game.player_status[p] != PLAYER_LEFT)
+            game.player_status[p] = PLAYER_ACTIVE;
+        game.player_hands[p][0] = game.player_hands[p][1] = NOCARD;
+    }
+    for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c)
+        game.community_cards[c] = NOCARD;
+}
+
+// Wait until at least two players send READY, otherwise HALT
+static bool wait_for_ready(void) {
+    int ready_count = 0;
+    client_packet_t in;
+
+    for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
+        int fd = game.sockets[pid];
+        if (fd < 0) continue;
+        int n = recv(fd, &in, sizeof(in), 0);
+        if (n <= 0 || in.packet_type == LEAVE) {
+            server_packet_t ack = { .packet_type = ACK };
+            send(fd, &ack, sizeof(ack), 0);
+            close(fd);
+            game.sockets[pid]       = -1;
+            game.player_status[pid] = PLAYER_LEFT;
+            continue;
+        }
+        if (in.packet_type == READY) {
+            game.player_status[pid] = PLAYER_ACTIVE;
+            ready_count++;
+        }
+    }
+    if (ready_count < 2) {
+        server_packet_t halt = { .packet_type = HALT };
+        broadcast_all(&halt);
+        return false;
+    }
+    return true;
+}
+
+static void deal_and_bet_cycle(void) {
+    // Deal hole cards & pre-flop
+    server_deal(&game);
+    game.round_stage = ROUND_PREFLOP;
+    game.current_player = next_active_player();
+    broadcast_info();
+
+    // Four streets: flop, turn, river handled via loop
+    for (int stage = 0; stage < 4; ++stage) {
+        if (stage > 0) {
+            server_community(&game);
+            broadcast_info();
+        }
+        memset(game.current_bets, 0, sizeof game.current_bets);
+        game.highest_bet = 0;
+        memset(has_acted, 0, sizeof has_acted);
+
+        int to_act = count_active_players();
+        int acted = 0;
+        bool end_round = false;
+
+        while (acted < to_act && !end_round) {
+            int pid = game.current_player;
+            client_packet_t in;
+            recv(game.sockets[pid], &in, sizeof(in), 0);
+            server_packet_t resp;
+            int ok = handle_client_action(&game, pid, &in, &resp);
+            send(game.sockets[pid], &resp, sizeof(resp), 0);
+
+            if (ok == 0) {
+                if (in.packet_type == RAISE) {
+                    to_act = count_active_players();
+                    acted = 1;
+                } else {
+                    acted++;
+                }
+                if (count_active_players() == 1) {
+                    end_round = true;
+                    break;
+                }
+                game.current_player = next_active_player();
+                broadcast_info();
+            }
+        }
+        if (end_round) break;
+    }
 }
 
 int main(int argc, char **argv) {
-    // Prepare log directories
+    // Prepare logs
     mkdir("logs", 0755);
     mkdir("build/logs", 0755);
 
-    int server_fds[NUM_PORTS];
+    // Open listening sockets
     struct sockaddr_in addr;
     int opt = 1;
-
     for (int i = 0; i < NUM_PORTS; ++i) {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         assert(fd >= 0);
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
         memset(&addr, 0, sizeof(addr));
-        addr.sin_family      = AF_INET;
+        addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = INADDR_ANY;
-        addr.sin_port        = htons(BASE_PORT + i);
+        addr.sin_port = htons(BASE_PORT + i);
         assert(bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0);
         assert(listen(fd, 1) == 0);
-        server_fds[i] = fd;
+        listener_fds[i] = fd;
     }
 
+    // Initialize game state
     int seed = (argc == 2 ? atoi(argv[1]) : 0);
-    init_game_state(&game, 100, seed);
+    init_game_state(&game, MAX_PLAYERS, seed);
 
+    // Accept player connections
     for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
-        int cfd = accept(server_fds[pid], NULL, NULL);
-        game.sockets[pid]       = cfd;
+        int cfd = accept(listener_fds[pid], NULL, NULL);
+        game.sockets[pid] = cfd;
         game.player_status[pid] = PLAYER_ACTIVE;
         game.num_players++;
-
-        client_packet_t join_pkt;
-        recv(cfd, &join_pkt, sizeof(join_pkt), 0);
-        assert(join_pkt.packet_type == JOIN);
+        client_packet_t join;
+        recv(cfd, &join, sizeof(join), 0);
+        assert(join.packet_type == JOIN);
     }
     for (int i = 0; i < NUM_PORTS; ++i)
-        close(server_fds[i]);
+        close(listener_fds[i]);
 
-    while (1) {
-        int ready_count = 0;
-        for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
-            int fd = game.sockets[pid];
-            if (fd < 0) continue;
-
-            client_packet_t in;
-            int n = recv(fd, &in, sizeof(in), 0);
-
-            if (n <= 0 || in.packet_type == LEAVE) {
-                server_packet_t ack = { .packet_type = ACK };
-                send(fd, &ack, sizeof(ack), 0);
-                close(fd);
-                game.sockets[pid]       = -1;
-                game.player_status[pid] = PLAYER_LEFT;
-                continue;
-            }
-            if (in.packet_type == READY) {
-                game.player_status[pid] = PLAYER_ACTIVE;
-                ready_count++;
-            }
-        }
-        if (ready_count < 2) {
-            server_packet_t halt = { .packet_type = HALT };
-            for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
-                int fd = game.sockets[pid];
-                if (fd < 0) continue;
-                send(fd, &halt, sizeof(halt), 0);
-                close(fd);
-            }
-            break;
-        }
-
-        // Start a new hand
-        reset_game_state(&game);
+    // Main game loop
+    while (wait_for_ready()) {
+        start_new_hand();
 
         // Rotate dealer
-        if (game.dealer_player < 0) {
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                if (game.player_status[i] == PLAYER_ACTIVE) {
-                    game.dealer_player = i;
-                    break;
-                }
-            }
-        } else {
-            do {
-                game.dealer_player = (game.dealer_player + 1) % MAX_PLAYERS;
-            } while (game.player_status[game.dealer_player] != PLAYER_ACTIVE);
-        }
+        int d = game.dealer_player;
+        do { d = (d < 0 ? 0 : (d + 1) % MAX_PLAYERS); }
+        while (game.player_status[d] != PLAYER_ACTIVE);
+        game.dealer_player = d;
 
-        // Deal hole cards
-        server_deal(&game);
-        
-        // Initialize betting pre-flop
-        game.round_stage = ROUND_PREFLOP;
-        memset(game.current_bets, 0, sizeof game.current_bets);
-        game.highest_bet = 0;
+        deal_and_bet_cycle();
 
-        // First broadcast of pre-flop state
-        
-        game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
-        while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
-            game.current_player = (game.current_player + 1) % MAX_PLAYERS;}
-        broadcast_info();
-        for (int stage = 0; stage < 4; ++stage) {
-            memset(has_acted, 0, sizeof has_acted);
-
-            // Reset bets for this street
-            memset(game.current_bets, 0, sizeof game.current_bets);
-            game.highest_bet = 0;
-
-            // Pick first to act (left of dealer)
-            game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
-            while (game.player_status[game.current_player] != PLAYER_ACTIVE)
-                game.current_player = next_active_player();
-
-            int num_active = count_active_players();
-            int actions    = 0;
-            bool short_circuit = false;
-
-            while (actions < num_active) {
-                client_packet_t in;
-                recv(game.sockets[game.current_player], &in, sizeof(in), 0);
-
-                server_packet_t resp;
-                int ok = handle_client_action(&game, game.current_player, &in, &resp);
-                send(game.sockets[game.current_player], &resp, sizeof(resp), 0);
-
-                if (ok == 0) {
-                    if (in.packet_type == RAISE) {
-                        num_active = count_active_players();
-                        actions = 1;
-                    } else {
-                        actions++;
-                    }
-                    // Check for single remaining player → short-circuit
-                    if (count_active_players() == 1) {
-                        short_circuit = true;
-                        break;
-                    }
-
-                    if (actions < num_active) {
-                        game.current_player = next_active_player();
-                        broadcast_info();
-                    }
-                }
-            }
-            if (short_circuit) break;
-            if (!short_circuit && stage < 3) {
-                    server_community(&game);
-
-                    memset(game.current_bets, 0, sizeof game.current_bets);
-                    game.highest_bet = 0;
-
-                    game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
-                    while (game.player_status[game.current_player] != PLAYER_ACTIVE)
-                        game.current_player = next_active_player();
-
-                    broadcast_info();
-                }
-        }
-
-        int winner = (count_active_players() == 1)
-            ? (find_winner(&game))
-            : find_winner(&game);
+        // Determine winner and payout
+        int winner = find_winner(&game);
         game.player_stacks[winner] += game.pot_size;
         broadcast_end(winner);
     }
 
-    // Final cleanup of any remaining fds
+    // Cleanup
     printf("[Server] Shutting down.\n");
-    for (int i = 0; i < MAX_PLAYERS; i++) {
-        close(server_fds[i]);
-        if (game.player_status[i] != PLAYER_LEFT)
-            close(game.sockets[i]);
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        if (game.sockets[i] >= 0) close(game.sockets[i]);
     }
-
     return 0;
 }
