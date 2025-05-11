@@ -183,8 +183,6 @@ int main(int argc, char **argv) {
         game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
         while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
             game.current_player = (game.current_player + 1) % MAX_PLAYERS;}
-        broadcast_info();
-
         for (int stage = 0; stage < 4; ++stage) {
             memset(has_acted, 0, sizeof has_acted);
 
