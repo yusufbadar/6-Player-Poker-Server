@@ -50,21 +50,27 @@ int handle_client_action(game_state_t *game,
             return 0;
 
         case RAISE: {
-            int raise_amt = in->params[0];
-            if (raise_amt <= game->highest_bet) {
+            int chips_now = in->params[0];
+
+            if (chips_now <= 0 || chips_now > game->player_stacks[pid]) {
                 out->packet_type = NACK;
                 return -1;
             }
-            int need = raise_amt - game->current_bets[pid];
-            if (need < 0 || need > game->player_stacks[pid]) {
+
+            int to_call = game->highest_bet - game->current_bets[pid];
+
+            if (chips_now <= to_call) {
                 out->packet_type = NACK;
                 return -1;
             }
-            game->player_stacks[pid] -= need;
-            game->current_bets [pid] += need;
-            game->highest_bet         = raise_amt;
-            game->pot_size           += need;
+
+            game->player_stacks[pid] -= chips_now;
+            game->current_bets [pid] += chips_now;
+            game->pot_size           += chips_now;
+
+            game->highest_bet = game->current_bets[pid];
             maybe_allin(game, pid);
+
             out->packet_type = ACK;
             return 0;
         }
