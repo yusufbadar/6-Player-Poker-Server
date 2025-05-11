@@ -188,10 +188,6 @@ int main(int argc, char **argv) {
         for (int stage = 0; stage < 4; ++stage) {
             memset(has_acted, 0, sizeof has_acted);
 
-            if (stage > 0) {
-                server_community(&game);
-            }
-
             // Reset bets for this street
             memset(game.current_bets, 0, sizeof game.current_bets);
             game.highest_bet = 0;

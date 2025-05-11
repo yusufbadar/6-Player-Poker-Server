@@ -7,10 +7,13 @@
 #include "game_logic.h"
 #include "logs.h"
 
-static void maybe_allin(game_state_t *g, player_id_t pid)
+static inline void maybe_allin(game_state_t *g, player_id_t pid)
 {
-    if (g->player_stacks[pid] == 0 && g->player_status[pid] == PLAYER_ACTIVE)
-        g->player_status[pid] = PLAYER_ALLIN;
+    if (g->player_stacks[pid] <= 0) {
+        g->player_stacks[pid] = 0;
+        if (g->player_status[pid] == PLAYER_ACTIVE)
+            g->player_status[pid] = PLAYER_ALLIN;
+    }
 }
 
 int handle_client_action(game_state_t *game,
