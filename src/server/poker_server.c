@@ -18,7 +18,19 @@
 
 static int server_fds[NUM_PORTS];
 static game_state_t game;
+ extern int has_acted[MAX_PLAYERS];
+ extern int last_raiser;
 
+// rotate through the global `game` to find the next PLAYER_ACTIVE
+static player_id_t next_active_player(void) {
+    player_id_t curr = game.current_player;
+    for (int i = 0; i < MAX_PLAYERS; ++i) {
+        curr = (curr + 1) % MAX_PLAYERS;
+        if (game.player_status[curr] == PLAYER_ACTIVE)
+            return curr;
+    }
+    return (player_id_t)-1;
+}
 static void broadcast_info() {
     server_packet_t pkt;
     for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
@@ -137,7 +149,9 @@ int main(int argc, char **argv) {
         }
 
         server_deal(&game);
-        game.current_player = next_active_player(&game, game.dealer_player);
+        game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
+        while (game.player_status[game.current_player] != PLAYER_ACTIVE)
+            game.current_player = (game.current_player + 1) % MAX_PLAYERS;
         broadcast_info();
 
         for (int round = 0; round < 4; round++) {
@@ -154,7 +168,7 @@ int main(int argc, char **argv) {
 
                 if (ok == 0 && resp.packet_type == ACK) {
                     actions++;
-                    game.current_player = next_active_player(&game, game.current_player);
+                    game.current_player = next_active_player();
                     broadcast_info();
                 }
             }

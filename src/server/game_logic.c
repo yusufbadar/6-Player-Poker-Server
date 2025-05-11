@@ -147,3 +147,138 @@ int find_winner(game_state_t *game){
     }
     return best_pid;
 }
+
+static int cmp_desc(const void *a, const void *b) {
+    int ia = *(const int*)a;
+    int ib = *(const int*)b;
+    return ib - ia;
+}
+static int pack_detail(const int *vals, int n) {
+    int out = 0;
+    for (int i = 0; i < n; ++i) {
+        out = (out << 4) | vals[i];
+    }
+    return out;
+}
+static int hand_value(card_t *cards, int count) {
+    int rank_cnt[13] = {0}, suit_cnt[4] = {0};
+    for (int i = 0; i < count; ++i) {
+        int r = cards[i] >> SUITE_BITS;
+        int s = cards[i] & ((1 << SUITE_BITS) - 1);
+        rank_cnt[r]++;
+        suit_cnt[s]++;
+    }
+
+    // build unique descending ranks (with A-low trick)
+    int uniq[14], u = 0;
+    for (int r = 12; r >= 0; --r)
+        if (rank_cnt[r]) uniq[u++] = r;
+    if (rank_cnt[12]) uniq[u++] = -1;  // Ace as low
+
+    // (1) check straight-flush
+    int best_sf = -1;
+    for (int s = 0; s < 4; ++s) if (suit_cnt[s] >= 5) {
+        int sr[7], m = 0;
+        for (int i = 0; i < count; ++i)
+            if ((cards[i] & ((1 << SUITE_BITS)-1)) == s)
+                sr[m++] = cards[i] >> SUITE_BITS;
+        qsort(sr, m, sizeof *sr, cmp_desc);
+        int uniq_sr[8], k = 0, last = -2;
+        for (int i = 0; i < m; ++i)
+            if (sr[i] != last) {
+                uniq_sr[k++] = sr[i];
+                last = sr[i];
+            }
+        if (last == 12) uniq_sr[k++] = -1;
+        for (int i = 0; i + 4 < k; ++i)
+            if (uniq_sr[i] - uniq_sr[i+4] == 4) {
+                best_sf = uniq_sr[i] < 0 ? 3 : uniq_sr[i];
+                break;
+            }
+        if (best_sf >= 0) break;
+    }
+    if (best_sf >= 0) return (8<<20)|(best_sf<<16);
+
+    // (2) four-of-a-kind
+    for (int r = 12; r >= 0; --r)
+        if (rank_cnt[r] == 4) {
+            int kc = -1;
+            for (int x = 12; x >= 0; --x)
+                if (x!=r && rank_cnt[x]) { kc = x; break; }
+            return (7<<20)|(r<<16)|(kc<<12);
+        }
+
+    // (3) full house
+    int three = -1, pair = -1;
+    for (int r = 12; r >= 0; --r)
+        if (rank_cnt[r] >= 3) { three = r; break; }
+    if (three>=0)
+        for (int r = 12; r >= 0; --r)
+            if (r!=three && rank_cnt[r]>=2) { pair = r; break; }
+    if (three>=0 && pair>=0) return (6<<20)|(three<<16)|(pair<<12);
+
+    // (4) flush
+    for (int s = 0; s < 4; ++s) if (suit_cnt[s] >= 5) {
+        int vals[5], k=0;
+        for (int r = 12; r >= 0 && k<5; --r)
+            for (int i = 0; i < count && k<5; ++i)
+                if (((cards[i]&((1<<SUITE_BITS)-1))==s) &&
+                    ((cards[i]>>SUITE_BITS)==r))
+                    vals[k++] = r;
+        return (5<<20) | pack_detail(vals,5);
+    }
+
+    // (5) straight
+    for (int i = 0; i+4< u; ++i) {
+        int hi = uniq[i]<0?3:uniq[i];
+        int lo = uniq[i+4]<0?0:uniq[i+4];
+        if (hi - lo == 4) return (4<<20)|(hi<<16);
+    }
+
+    // (6) three-of-a-kind
+    if (three>=0) {
+        int kics[2], k=0;
+        for (int r = 12; r>=0 && k<2; --r)
+            if (r!=three && rank_cnt[r]) kics[k++]=r;
+        return (3<<20)|(three<<16)|pack_detail(kics,2);
+    }
+
+    // (7) two-pair
+    int p1=-1,p2=-1;
+    for (int r = 12; r>=0; --r)
+        if (rank_cnt[r]>=2) {
+            if (p1<0) p1=r; else if (p2<0) p2=r;
+            if (p2>=0) break;
+        }
+    if (p2>=0) {
+        int kic=-1;
+        for (int r=12;r>=0;--r)
+            if (r!=p1 && r!=p2 && rank_cnt[r]) { kic = r; break; }
+        int v[3]={p1,p2,kic};
+        return (2<<20)|pack_detail(v,3);
+    }
+
+    // (8) one-pair
+    if (p1>=0) {
+        int kics[3], k=0;
+        for (int r=12;r>=0&&k<3;--r)
+            if (r!=p1 && rank_cnt[r]) kics[k++]=r;
+        int v[4]={p1,kics[0],kics[1],kics[2]};
+        return (1<<20)|pack_detail(v,4);
+    }
+
+    // (9) high-card
+    int hc[5], h=0;
+    for (int r=12;r>=0&&h<5;--r) if (rank_cnt[r]) hc[h++]=r;
+    while (h<5) hc[h++]=0;
+    return pack_detail(hc,5);
+}
+
+int evaluate_hand(game_state_t *g, player_id_t p) {
+    card_t buf[7]; int n=0;
+    if (g->player_hands[p][0]!=NOCARD) buf[n++]=g->player_hands[p][0];
+    if (g->player_hands[p][1]!=NOCARD) buf[n++]=g->player_hands[p][1];
+    for (int i=0;i<MAX_COMMUNITY_CARDS;++i)
+        if (g->community_cards[i]!=NOCARD) buf[n++]=g->community_cards[i];
+    return hand_value(buf,n);
+}
