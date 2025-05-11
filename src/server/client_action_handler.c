@@ -89,9 +89,11 @@ void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
 
     i->player_cards[0] = g->player_hands[pid][0];
     i->player_cards[1] = g->player_hands[pid][1];
+
     for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c) i->community_cards[c] = NOCARD;
+
     if (g->round_stage >= ROUND_FLOP) {
-        memcpy(i->community_cards, g->community_cards, 3*sizeof(card_t));
+        memcpy(i->community_cards, g->community_cards, 3 * sizeof(card_t));
         if (g->round_stage >= ROUND_TURN) {
             i->community_cards[3] = g->community_cards[3];
             if (g->round_stage >= ROUND_RIVER)
@@ -99,36 +101,39 @@ void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
         }
     }
 
-    for (int p=0;p<MAX_PLAYERS;++p){
-        i->player_stacks[p]=g->player_stacks[p];
-        i->player_bets  [p]=g->current_bets [p];
-        if (g->player_status[p]==PLAYER_ACTIVE||g->player_status[p]==PLAYER_ALLIN)
-            i->player_status[p]=1;
-        else if (g->player_status[p]==PLAYER_FOLDED)
-            i->player_status[p]=0;
+    for (int p = 0; p < MAX_PLAYERS; ++p) {
+        i->player_stacks[p] = g->player_stacks[p];
+        i->player_bets[p] = g->current_bets[p];
+
+        if (g->player_status[p] == PLAYER_ACTIVE || g->player_status[p] == PLAYER_ALLIN)
+            i->player_status[p] = 1;
+        else if (g->player_status[p] == PLAYER_FOLDED)
+            i->player_status[p] = 0;
         else
-            i->player_status[p]=2;
+            i->player_status[p] = 2;
     }
 
-    i->pot_size    = g->pot_size;
-    i->dealer      = g->dealer_player;
+    i->pot_size = g->pot_size;
+    i->dealer = g->dealer_player;
     i->player_turn = g->current_player;
-    i->bet_size    = g->highest_bet;
+    i->bet_size = g->highest_bet;
 
     log_info("[INFO_PACKET] pot_size=%d, player_turn=%d, dealer=%d, bet_size=%d",
              i->pot_size, i->player_turn, i->dealer, i->bet_size);
 
-    char b0[4], b1[4]; card_to_string(i->player_cards[0],b0);
-    card_to_string(i->player_cards[1],b1);
+    char b0[4], b1[4];
+    card_to_string(i->player_cards[0], b0);
+    card_to_string(i->player_cards[1], b1);
     log_info("[INFO_PACKET] Your Cards: %s %s", b0, b1);
 
-    for (int c=0;c<MAX_COMMUNITY_CARDS;++c)
-        if (i->community_cards[c]!=NOCARD){
-            char bc[4]; card_to_string(i->community_cards[c],bc);
+    for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c)
+        if (i->community_cards[c] != NOCARD) {
+            char bc[4];
+            card_to_string(i->community_cards[c], bc);
             log_info("[INFO_PACKET] Community Card %d: %s", c, bc);
         }
 
-    for (int p=0;p<MAX_PLAYERS;++p)
+    for (int p = 0; p < MAX_PLAYERS; ++p)
         log_info("[INFO_PACKET] Player %d: stack=%d, bet=%d, status=%d",
                  p, i->player_stacks[p], i->player_bets[p], i->player_status[p]);
 }
