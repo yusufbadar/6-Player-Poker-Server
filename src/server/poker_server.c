@@ -166,8 +166,9 @@ int main(int argc, char **argv)
         memset(game.current_bets, 0, sizeof game.current_bets);
         game.highest_bet = 0;
         game.current_player = NEXT(game.dealer_player);
-        while (game.player_status[game.current_player] != PLAYER_ACTIVE)
+        while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
             game.current_player = NEXT(game.current_player);
+        }
         broadcast_info();
 
         for (int street = 0; street < 4; ++street) {

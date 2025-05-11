@@ -32,15 +32,14 @@ static inline uint8_t visible_status(uint8_t s)
 
 int handle_client_action(game_state_t *g, player_id_t pid, const client_packet_t *in, server_packet_t *out)
 {
-    if (g->current_player != pid)
+    if (g->current_player != pid) {
         return send_nack(out);
-
+    }
     const int to_call = g->highest_bet - g->current_bets[pid];
 
     switch (in->packet_type) {
-        case CHECK:
+        case CHECK: 
             return (to_call == 0) ? send_ack(out) : send_nack(out);
-
         case CALL:
             if (to_call <= 0 || to_call > g->player_stacks[pid]){
                 return send_nack(out);
