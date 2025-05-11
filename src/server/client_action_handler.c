@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <stdint.h>
 
 #include "client_action_handler.h"
 #include "game_logic.h"
@@ -40,7 +41,6 @@ int handle_client_action(game_state_t *g,
     const int to_call = g->highest_bet - g->current_bets[pid];
 
     switch (in->packet_type) {
-
         case CHECK:
             return (to_call == 0) ? send_ack(out) : send_nack(out);
 
