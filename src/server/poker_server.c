@@ -183,6 +183,7 @@ int main(int argc, char **argv) {
         game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
         while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
             game.current_player = (game.current_player + 1) % MAX_PLAYERS;}
+        broadcast_info();
         for (int stage = 0; stage < 4; ++stage) {
             memset(has_acted, 0, sizeof has_acted);
 
@@ -221,9 +222,6 @@ int main(int argc, char **argv) {
                         has_acted[game.current_player] = 1;
                         actions++;
                     }
-
-                    broadcast_info();
-
                     // Check for single remaining player → short-circuit
                     if (count_active_players() == 1) {
                         short_circuit = true;
