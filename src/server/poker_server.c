@@ -226,13 +226,14 @@ int main(int argc, char **argv) {
                         break;
                     }
 
-                    // Next to act if more actions remain
                     if (actions < num_active) {
                         game.current_player = next_active_player();
                         broadcast_info();
                     }
                 }
-                if (!short_circuit && stage < 3) {
+            }
+            if (short_circuit) break;
+            if (!short_circuit && stage < 3) {
                     server_community(&game);
 
                     memset(game.current_bets, 0, sizeof game.current_bets);
@@ -244,9 +245,6 @@ int main(int argc, char **argv) {
 
                     broadcast_info();
                 }
-
-            }
-            if (short_circuit) break;
         }
 
         int winner = (count_active_players() == 1)
