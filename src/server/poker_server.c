@@ -91,7 +91,6 @@ int main(int argc, char **argv) {
     struct sockaddr_in addr;
     int opt = 1;
 
-    // 1) Set up listening sockets
     for (int i = 0; i < NUM_PORTS; ++i) {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         assert(fd >= 0);
@@ -105,11 +104,9 @@ int main(int argc, char **argv) {
         server_fds[i] = fd;
     }
 
-    // 2) Initialize game state
     int seed = (argc == 2 ? atoi(argv[1]) : 0);
     init_game_state(&game, 100, seed);
 
-    // 3) JOIN phase: accept exactly MAX_PLAYERS, track count
     for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
         int cfd = accept(server_fds[pid], NULL, NULL);
         game.sockets[pid]       = cfd;
@@ -120,13 +117,10 @@ int main(int argc, char **argv) {
         recv(cfd, &join_pkt, sizeof(join_pkt), 0);
         assert(join_pkt.packet_type == JOIN);
     }
-    // Close listeners immediately after JOIN
     for (int i = 0; i < NUM_PORTS; ++i)
         close(server_fds[i]);
 
-    // 4) Main game loop
     while (1) {
-        // Collect READY or LEAVE
         int ready_count = 0;
         for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
             int fd = game.sockets[pid];
@@ -134,7 +128,6 @@ int main(int argc, char **argv) {
 
             client_packet_t in;
             int n = recv(fd, &in, sizeof(in), 0);
-            // Client closed or error
             if (n <= 0 || in.packet_type == LEAVE) {
                 server_packet_t ack = { .packet_type = ACK };
                 send(fd, &ack, sizeof(ack), 0);
@@ -148,7 +141,6 @@ int main(int argc, char **argv) {
                 ready_count++;
             }
         }
-        // Fewer than 2 → HALT and exit
         if (ready_count < 2) {
             server_packet_t halt = { .packet_type = HALT };
             for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
@@ -179,21 +171,22 @@ int main(int argc, char **argv) {
 
         // Deal hole cards
         server_deal(&game);
-
+        
         // Initialize betting pre-flop
         game.round_stage = ROUND_PREFLOP;
         memset(game.current_bets, 0, sizeof game.current_bets);
         game.highest_bet = 0;
 
         // First broadcast of pre-flop state
+        
+        game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
+        while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
+            game.current_player = (game.current_player + 1) % MAX_PLAYERS;
         broadcast_info();
 
-        // 5) Betting rounds: PREFLOP, FLOP, TURN, RIVER
         for (int stage = 0; stage < 4; ++stage) {
-            // Clear who has acted
             memset(has_acted, 0, sizeof has_acted);
 
-            // After flop/turn/river, deal community cards
             if (stage > 0) {
                 server_community(&game);
             }
@@ -230,7 +223,6 @@ int main(int argc, char **argv) {
                         actions++;
                     }
 
-                    // Broadcast update after every valid action
                     broadcast_info();
 
                     // Check for single remaining player → short-circuit
@@ -248,7 +240,6 @@ int main(int argc, char **argv) {
             if (short_circuit) break;
         }
 
-        // Showdown
         int winner = (count_active_players() == 1)
             ? (find_winner(&game))
             : find_winner(&game);
