@@ -11,6 +11,7 @@
 #include "poker_client.h"
 #include "client_action_handler.h"
 #include "game_logic.h"
+player_id_t next_active_player(const game_state_t *g, player_id_t start);
 
 #define BASE_PORT 2201
 #define NUM_PORTS 6
