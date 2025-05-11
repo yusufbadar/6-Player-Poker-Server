@@ -121,8 +121,6 @@ int main(int argc, char **argv)
             client_packet_t pkt;
             int n = recv(fd, &pkt, sizeof(pkt), 0);
             if (n <= 0 || pkt.packet_type == LEAVE) {
-                server_packet_t ack = { .packet_type = ACK };
-                send(fd, &ack, sizeof(ack), 0);
                 close(fd);
                 game.sockets[pid]      = -1;
                 game.player_status[pid] = PLAYER_LEFT;
@@ -136,8 +134,6 @@ int main(int argc, char **argv)
             for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
                 int fd = game.sockets[pid];
                 if (fd >= 0) {
-                    server_packet_t halt = { .packet_type = HALT };
-                    send(fd, &halt, sizeof(halt), 0);
                     close(fd);
                 }
             }
