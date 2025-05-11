@@ -195,7 +195,9 @@ int main(int argc, char **argv)
                     }
                 }
             }
-
+            if (!early_end){
+                broadcast_info();
+            } 
             if (early_end) break;
 
             if (street < 3) {
