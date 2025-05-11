@@ -24,7 +24,7 @@ typedef struct {
 game_state_t game;
 
 /* ───────── helpers ───────── */
-static void reset_game_state(game_state_t *g)
+void reset_game_state(game_state_t *g)
 {
     shuffle_deck(g->deck);
     g->round_stage = ROUND_INIT;
