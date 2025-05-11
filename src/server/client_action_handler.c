@@ -3,9 +3,11 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
+
 #include "client_action_handler.h"
 #include "game_logic.h"
 #include "logs.h"
+
 
 int handle_client_action(game_state_t *game, player_id_t pid, const client_packet_t *in, server_packet_t *out) {
     if (game->current_player != pid) {
@@ -64,7 +66,16 @@ int handle_client_action(game_state_t *game, player_id_t pid, const client_packe
             return -1;
     }
 }
-
+static void card_to_string(card_t card, char *buf) {
+    // poker_client.h packs rank in the high bits and suit in the low SUITE_BITS bits
+    static const char *R = "23456789TJQKA";
+    static const char *S = "cdhs";
+    int rank = (card >> SUITE_BITS) & 0xF;
+    int suit = card & ((1 << SUITE_BITS) - 1);
+    buf[0] = R[rank];
+    buf[1] = S[suit];
+    buf[2] = '\0';
+}
 void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out) {
     out->packet_type = INFO;
     info_packet_t *i = &out->info;
