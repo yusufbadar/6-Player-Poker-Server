@@ -129,6 +129,7 @@ int main(int argc, char **argv) {
 
             client_packet_t in;
             int n = recv(fd, &in, sizeof(in), 0);
+
             if (n <= 0 || in.packet_type == LEAVE) {
                 server_packet_t ack = { .packet_type = ACK };
                 send(fd, &ack, sizeof(ack), 0);
@@ -214,12 +215,9 @@ int main(int argc, char **argv) {
 
                 if (ok == 0) {
                     if (in.packet_type == RAISE) {
-                        // Everyone must act again
-                        memset(has_acted, 0, sizeof has_acted);
-                        has_acted[game.current_player] = 1;
+                        num_active = count_active_players();
                         actions = 1;
                     } else {
-                        has_acted[game.current_player] = 1;
                         actions++;
                     }
                     // Check for single remaining player → short-circuit
@@ -231,8 +229,22 @@ int main(int argc, char **argv) {
                     // Next to act if more actions remain
                     if (actions < num_active) {
                         game.current_player = next_active_player();
+                        broadcast_info();
                     }
                 }
+                if (!short_circuit && stage < 3) {
+                    server_community(&game);
+
+                    memset(game.current_bets, 0, sizeof game.current_bets);
+                    game.highest_bet = 0;
+
+                    game.current_player = (game.dealer_player + 1) % MAX_PLAYERS;
+                    while (game.player_status[game.current_player] != PLAYER_ACTIVE)
+                        game.current_player = next_active_player();
+
+                    broadcast_info();
+                }
+
             }
             if (short_circuit) break;
         }
@@ -246,9 +258,10 @@ int main(int argc, char **argv) {
 
     // Final cleanup of any remaining fds
     printf("[Server] Shutting down.\n");
-    for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
-        if (game.player_status[pid] != PLAYER_LEFT)
-            close(game.sockets[pid]);
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        close(server_fds[i]);
+        if (game.player_status[i] != PLAYER_LEFT)
+            close(game.sockets[i]);
     }
 
     return 0;
