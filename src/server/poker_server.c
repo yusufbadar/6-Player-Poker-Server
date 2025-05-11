@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
 
     // 2) Initialize game state
     int seed = (argc == 2 ? atoi(argv[1]) : 0);
-    init_game_state(&game, MAX_PLAYERS, seed);
+    init_game_state(&game, 100, seed);
 
     // 3) JOIN phase: accept exactly MAX_PLAYERS, track count
     for (int pid = 0; pid < MAX_PLAYERS; ++pid) {
