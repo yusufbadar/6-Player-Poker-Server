@@ -195,17 +195,21 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            if (!early_end){
-                broadcast_info();
-            } 
+            if (!early_end)
+                broadcast_info(); 
             if (early_end) break;
 
             if (street < 3) {
                 server_community(&game);
+
+                memset(game.current_bets, 0, sizeof game.current_bets);
+                game.highest_bet = 0;
+
                 game.current_player = game.dealer_player;
                 do {
                     game.current_player = (game.current_player + 1) % MAX_PLAYERS;
                 } while (game.player_status[game.current_player] != PLAYER_ACTIVE);
+
                 broadcast_info();
             }
         }
