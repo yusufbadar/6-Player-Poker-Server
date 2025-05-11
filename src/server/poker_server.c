@@ -109,8 +109,6 @@ int main(int argc, char **argv)
         client_packet_t join_pkt;
         recv(cfd, &join_pkt, sizeof(join_pkt), 0);
         assert(join_pkt.packet_type == JOIN);
-        server_packet_t ack = { .packet_type = ACK };
-        send(cfd, &ack, sizeof(ack), 0);
     }
 
     for (int i = 0; i < NUM_PORTS; ++i) close(server_fds[i]);
@@ -131,8 +129,6 @@ int main(int argc, char **argv)
             } else if (pkt.packet_type == READY) {
                 game.player_status[pid] = PLAYER_ACTIVE;
                 ++ready_count;
-                server_packet_t ack = { .packet_type = ACK };
-                send(fd, &ack, sizeof(ack), 0);
             }
         }
 
