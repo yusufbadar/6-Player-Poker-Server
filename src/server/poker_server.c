@@ -18,7 +18,7 @@
 #define BUFFER_SIZE   1024
 
 // Track who has acted each street
-int has_acted[MAX_PLAYERS] = {0};
+extern int has_acted[MAX_PLAYERS];
 // Global game state
 game_state_t game;
 
