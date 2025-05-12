@@ -87,6 +87,19 @@ static void broadcast_end(int winner)
     EACH_PLAYER send_pkt(pid, &pkt);
 }
 
+static void accept_and_confirm(int listen_fd, player_id_t id) {
+    int cli_fd = accept(listen_fd, NULL, NULL);
+    assert(cli_fd >= 0);
+
+    game.sockets[id]      = cli_fd;
+    game.player_status[id]= PLAYER_ACTIVE;
+    ++game.num_players;
+
+    client_packet_t first_msg;
+    ssize_t bytes = recv(cli_fd, &first_msg, sizeof first_msg, 0);
+    assert(bytes == sizeof first_msg && first_msg.packet_type == JOIN);
+}
+
 int main(int argc, char **argv)
 {
 
@@ -109,15 +122,8 @@ int main(int argc, char **argv)
     int seed = (argc == 2) ? atoi(argv[1]) : 0;
     init_game_state(&game, 100, seed);
 
-    EACH_PLAYER {
-        int cfd = accept(server_fds[pid], NULL, NULL);
-        assert(cfd >= 0);
-        game.sockets[pid] = cfd;
-        game.player_status[pid] = PLAYER_ACTIVE;
-        game.num_players++;
-        client_packet_t join_pkt;
-        recv(cfd, &join_pkt, sizeof(join_pkt), 0);
-        assert(join_pkt.packet_type == JOIN);
+    for (player_id_t id = 0; id < MAX_PLAYERS; ++id) {
+        accept_and_confirm(server_fds[id], id);
     }
     for (int i = 0; i < NUM_PORTS; ++i) {
         close(server_fds[i]);
