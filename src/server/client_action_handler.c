@@ -97,10 +97,8 @@ void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
     switch (g->round_stage) {
         case ROUND_RIVER:
             info->community_cards[4] = g->community_cards[4];
-            /* FALL THROUGH */
         case ROUND_TURN:
             info->community_cards[3] = g->community_cards[3];
-            /* FALL THROUGH */
         case ROUND_FLOP:
             memcpy(info->community_cards,
                    g->community_cards,
