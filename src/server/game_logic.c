@@ -115,11 +115,13 @@ void server_deal(game_state_t *g) {
 }
 
 int check_betting_end(game_state_t *g) {
-    for (int seat = 0; seat < MAX_PLAYERS; ++seat) {
+    int seat = 0;
+    while (seat < MAX_PLAYERS) {
         if (g->player_status[seat] == PLAYER_ACTIVE &&
             g->current_bets[seat] != g->highest_bet) {
             return 0;
         }
+        ++seat;
     }
     return 1;
 }
