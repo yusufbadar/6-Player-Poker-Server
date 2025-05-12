@@ -180,50 +180,68 @@ int main(int argc, char **argv)
             game.current_player = NEXT(game.current_player);
         }
         broadcast_info();
-        for (int street = 0; street < 4; ++street) {
+        int st = 0;
+        bool hand_finished = false;
+
+        while (st < 4 && !hand_finished) {
             memset(street_has_acted, 0, sizeof street_has_acted);
             memset(game.current_bets, 0, sizeof game.current_bets);
             game.highest_bet = 0;
+
             game.current_player = NEXT(game.dealer_player);
-            while (game.player_status[game.current_player] != PLAYER_ACTIVE){
-                game.current_player = next_active_player(game.current_player);
+            while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
+                game.current_player = NEXT(game.current_player);
             }
-            int num_active = count_active_players();
-            int actions_seen = 0;
-            bool short_circuit = false;
-            while (actions_seen < num_active) {
-                client_packet_t in;
-                recv(game.sockets[game.current_player], &in, sizeof(in), 0);
-                server_packet_t resp;
-                int ok = handle_client_action(&game, game.current_player, &in, &resp);
-                send_pkt(game.current_player, &resp);
-                if (ok == 0) {
-                    if (in.packet_type == RAISE) {
-                        num_active = count_active_players();
-                        actions_seen = 1;
-                    } else {
-                        ++actions_seen;
+
+            int todo = count_active_players();
+            int acted = 0;
+
+            while (acted < todo) {
+                client_packet_t cli;
+                recv(game.sockets[game.current_player], &cli, sizeof cli, 0);
+
+                server_packet_t srv;
+                int ok = handle_client_action(&game, game.current_player, &cli, &srv);
+                send_pkt(game.current_player, &srv);
+
+                if (ok != 0) {
+                    continue;
+                }
+                if (cli.packet_type == RAISE) {
+                    todo  = count_active_players();
+                    acted = 1;
+                } else {
+                    ++acted;
+                }
+                if (count_active_players() == 1) {
+                    hand_finished = true;
+                    break;
+                }
+                if (acted < todo) {
+                    game.current_player = NEXT(game.current_player);
+                    while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
+                        game.current_player = NEXT(game.current_player);
                     }
-                    if (count_active_players() == 1) {
-                        short_circuit = true;
-                        break;
-                    }
-                    if (actions_seen < num_active) {
-                        game.current_player = next_active_player(game.current_player);
-                        broadcast_info();
-                    }
+                    broadcast_info();
                 }
             }
-            if (short_circuit) break;
-            if (street < 3) {
+
+            if (hand_finished) {
+                break;
+            }
+
+            if (st < 3) {
                 server_community(&game);
                 memset(game.current_bets, 0, sizeof game.current_bets);
-                game.highest_bet = 0;
+                game.highest_bet  = 0;
+
                 game.current_player = NEXT(game.dealer_player);
-                while (game.player_status[game.current_player] != PLAYER_ACTIVE)
-                    game.current_player = next_active_player(game.current_player);
+                while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
+                    game.current_player = NEXT(game.current_player);
+                }
                 broadcast_info();
             }
+            ++st;
         }
 
         int winner = find_winner(&game);
