@@ -371,17 +371,21 @@ int evaluate_hand(game_state_t *g, player_id_t p) {
 }
 
 int find_winner(game_state_t *g) {
-    int champion = -1;
-    int best_val = -1;
+    int best_id   = -1;
+    int best_rank = -1;
+
     for (int seat = 0; seat < MAX_PLAYERS; ++seat) {
-        if (g->player_status[seat] == PLAYER_ACTIVE ||
-            g->player_status[seat] == PLAYER_ALLIN) {
-            int val = evaluate_hand(g, seat);
-            if (val > best_val) {
-                best_val = val;
-                champion = seat;
-            }
+        if (g->player_status[seat] != PLAYER_ACTIVE &&
+            g->player_status[seat] != PLAYER_ALLIN) {
+            continue;
+        }
+
+        int score = evaluate_hand(g, seat);
+
+        if (score > best_rank) {
+            best_rank = score;
+            best_id   = seat;
         }
     }
-    return champion;
+    return best_id;
 }
