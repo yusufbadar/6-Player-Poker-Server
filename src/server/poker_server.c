@@ -201,10 +201,10 @@ int main(int argc, char **argv)
                 recv(game.sockets[game.current_player], &cli, sizeof cli, 0);
 
                 server_packet_t srv;
-                int ok = handle_client_action(&game, game.current_player, &cli, &srv);
+                int valid = handle_client_action(&game, game.current_player, &cli, &srv);
                 send_pkt(game.current_player, &srv);
 
-                if (ok != 0) {
+                if (valid != 0) {
                     continue;
                 }
                 if (cli.packet_type == RAISE) {
