@@ -130,13 +130,18 @@ int check_betting_end(game_state_t *g) {
     return 1;
 }
 
-int server_bet(game_state_t *g) {
-    if (check_betting_end(g)) {
+int server_bet(game_state_t *state) {
+    if (check_betting_end(state)) {
         return 1;
     }
-    do {
-        g->current_player = (g->current_player + 1) % MAX_PLAYERS;
-    } while (g->player_status[g->current_player] != PLAYER_ACTIVE);
+
+    while (1) {
+        state->current_player = (state->current_player + 1) % MAX_PLAYERS;
+
+        if (state->player_status[state->current_player] == PLAYER_ACTIVE) {
+            break;
+        }
+    }
     return 0;
 }
 
