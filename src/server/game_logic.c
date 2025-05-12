@@ -69,12 +69,16 @@ void init_game_state(game_state_t *st, int initial_stack, int seed) {
 }
 
 void server_join(game_state_t *g) {
-    player_id_t seat = g->current_player;
-    if (g->player_status[seat] == PLAYER_LEFT) {
-        g->player_status[seat] = PLAYER_ACTIVE;
-        g->num_players += 1;
-        log_info("Player %d joined (total=%d)", seat, g->num_players);
+    player_id_t id = g->current_player;
+
+    if (g->player_status[id] != PLAYER_LEFT) {
+        return;
     }
+
+    g->player_status[id] = PLAYER_ACTIVE;
+    ++g->num_players;
+
+    log_info("Player %d joined (total=%d)", id, g->num_players);
 }
 
 int server_ready(game_state_t *g) {
