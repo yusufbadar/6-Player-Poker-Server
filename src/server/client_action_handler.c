@@ -86,33 +86,39 @@ static void card_to_string(card_t c, char *buf)
 void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
 {
     out->packet_type = INFO;
-    info_packet_t *i = &out->info;
+    info_packet_t *info = &out->info;
 
-    i->player_cards[0] = g->player_hands[pid][0];
-    i->player_cards[1] = g->player_hands[pid][1];
+    info->player_cards[0] = g->player_hands[pid][0];
+    info->player_cards[1] = g->player_hands[pid][1];
 
-    for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c)
-        i->community_cards[c] = NOCARD;
+    for (int k = 0; k < MAX_COMMUNITY_CARDS; ++k)
+        info->community_cards[k] = NOCARD;
 
-    if (g->round_stage >= ROUND_FLOP) {
-        memcpy(i->community_cards, g->community_cards, 3 * sizeof(card_t));
-        if (g->round_stage >= ROUND_TURN) {
-            i->community_cards[3] = g->community_cards[3];
-            if (g->round_stage >= ROUND_RIVER)
-                i->community_cards[4] = g->community_cards[4];
-        }
+    switch (g->round_stage) {
+        case ROUND_RIVER:
+            info->community_cards[4] = g->community_cards[4];
+            /* FALL THROUGH */
+        case ROUND_TURN:
+            info->community_cards[3] = g->community_cards[3];
+            /* FALL THROUGH */
+        case ROUND_FLOP:
+            memcpy(info->community_cards,
+                   g->community_cards,
+                   3 * sizeof(card_t));
+        default:
+            break;
     }
 
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        i->player_stacks [p] = g->player_stacks[p];
-        i->player_bets   [p] = g->current_bets[p];
-        i->player_status[p] = visible_status(g->player_status[p]);
+    for (int seat = 0; seat < MAX_PLAYERS; ++seat) {
+        info->player_stacks [seat] = g->player_stacks [seat];
+        info->player_bets   [seat] = g->current_bets  [seat];
+        info->player_status [seat] = visible_status(g->player_status[seat]);
     }
 
-    i->pot_size    = g->pot_size;
-    i->dealer      = g->dealer_player;
-    i->player_turn = g->current_player;
-    i->bet_size    = g->highest_bet;
+    info->pot_size    = g->pot_size;
+    info->dealer      = g->dealer_player;
+    info->player_turn = g->current_player;
+    info->bet_size    = g->highest_bet;
 }
 
 void build_end_packet(game_state_t *g, player_id_t winner, server_packet_t *out)
