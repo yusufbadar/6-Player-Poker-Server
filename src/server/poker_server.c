@@ -38,22 +38,27 @@ static int count_active_players(void)
     return n;
 }
 
-void reset_game_state(game_state_t *g)
-{
-    shuffle_deck(g->deck);
-    g->round_stage = ROUND_INIT;
-    g->next_card = 0;
-    g->highest_bet = 0;
-    g->pot_size = 0;
-    EACH_PLAYER {
-        if (g->player_status[pid] != PLAYER_LEFT)
-            g->player_status[pid] = PLAYER_ACTIVE;
-        g->current_bets[pid] = 0;
-        g->player_hands[pid][0] = NOCARD;
-        g->player_hands[pid][1] = NOCARD;
+void reset_game_state(game_state_t *gs) {
+    shuffle_deck(gs->deck);
+
+    gs->round_stage = ROUND_INIT;
+    gs->next_card   = 0;
+    gs->highest_bet = 0;
+    gs->pot_size    = 0;
+
+    memset(gs->current_bets, 0, sizeof gs->current_bets);
+
+    for (player_id_t p = 0; p < MAX_PLAYERS; ++p) {
+        if (gs->player_status[p] != PLAYER_LEFT) {
+            gs->player_status[p] = PLAYER_ACTIVE;
+        }
+
+        gs->player_hands[p][0] = NOCARD;
+        gs->player_hands[p][1] = NOCARD;
     }
-    for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c)
-        g->community_cards[c] = NOCARD;
+
+    /* wipe the board */
+    memset(gs->community_cards, NOCARD, sizeof gs->community_cards);
 }
 
 static player_id_t next_active_player(player_id_t start)
