@@ -230,13 +230,15 @@ int main(int argc, char **argv)
                 break;
             }
 
-            if (st != 3) {
+            if (st < 3) {
                 server_community(&game);
                 memset(game.current_bets, 0, sizeof game.current_bets);
-                game.highest_bet = 0;
-                for (game.current_player = NEXT(game.dealer_player);
-                    game.player_status[game.current_player] != PLAYER_ACTIVE;
-                    game.current_player = NEXT(game.current_player))
+                game.highest_bet  = 0;
+
+                game.current_player = NEXT(game.dealer_player);
+                while (game.player_status[game.current_player] != PLAYER_ACTIVE) {
+                    game.current_player = NEXT(game.current_player);
+                }
                 broadcast_info();
             }
             ++st;
