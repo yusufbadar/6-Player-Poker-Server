@@ -44,40 +44,28 @@ void shuffle_deck(card_t deck[DECK_SIZE]) {
     }
 }
 
-void init_game_state(game_state_t *state, int stack_size, int seed_val) {
-    /* Zero-initialise whole struct */
-    memset(state, 0, sizeof *state);
+void init_game_state(game_state_t *st, int initial_stack, int seed) {
+    memset(st, 0, sizeof *st);
+    init_deck(st->deck, seed);
+    st->round_stage = ROUND_INIT;
+    st->dealer_player = -1;
+    st->current_player = -1;
 
-    /* Prepare deck */
-    init_deck(state->deck, seed_val);
-    shuffle_deck(state->deck);              /* harmless extra shuffle */
-
-    state->round_stage   = ROUND_INIT;
-    state->dealer_player = -1;
-    state->current_player = -1;
-
-    /* Fill per-player arrays – iterate backwards for variety */
-    for (int idx = MAX_PLAYERS; idx-- > 0; ) {
-        state->player_stacks [idx] = stack_size;
-        state->player_status [idx] = PLAYER_LEFT;
-        state->current_bets   [idx] = 0;
+    for (int seat = 0; seat < MAX_PLAYERS; ++seat) {
+        st->player_stacks[seat] = initial_stack;
+        st->player_status[seat] = PLAYER_LEFT;
+        st->current_bets[seat] = 0;
+        st->player_hands[seat][0] = NOCARD;
+        st->player_hands[seat][1] = NOCARD;
     }
 
-    /* Clear all hole cards with one memset, then restore sentinel NOCARD value */
-    memset(state->player_hands, 0, sizeof state->player_hands);
-    for (int p = 0; p < MAX_PLAYERS; ++p) {
-        state->player_hands[p][0] = NOCARD;
-        state->player_hands[p][1] = NOCARD;
-    }
-
-    /* Community board */
     for (int c = 0; c < MAX_COMMUNITY_CARDS; ++c) {
-        state->community_cards[c] = NOCARD;
+        st->community_cards[c] = NOCARD;
     }
 
-    state->next_card   = 0;
-    state->highest_bet = 0;
-    state->pot_size    = 0;
+    st->next_card = 0;
+    st->highest_bet = 0;
+    st->pot_size = 0;
 }
 
 void server_join(game_state_t *g) {
