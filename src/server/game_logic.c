@@ -10,13 +10,8 @@
 #include "game_logic.h"
 #include "logs.h"
 
-static int compare_int_desc(const void *lhs, const void *rhs) {
-    const int a = *(const int *)lhs;
-    const int b = *(const int *)rhs;
-    return b - a;
-}
 
-static int compare_rank_desc(const void *lhs, const void *rhs) {
+static int descending(const void *lhs, const void *rhs) {
     return (*(const int *)rhs) - (*(const int *)lhs);
 }
 
@@ -206,7 +201,7 @@ static int hand_value(const card_t *cards, int count) {
                 sr[m++] = cards[i] >> SUITE_BITS;
             }
         }
-        qsort(sr, m, sizeof *sr, compare_rank_desc);
+        qsort(sr, m, sizeof *sr, descending);
         int su[8];
         int k = 0;
         int last = -2;
