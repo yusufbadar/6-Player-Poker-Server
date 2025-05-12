@@ -89,8 +89,6 @@ static void broadcast_end(int winner)
 
 int main(int argc, char **argv)
 {
-    mkdir("logs", 0755);
-    mkdir("build/logs", 0755);
 
     int server_fds[NUM_PORTS] = {0};
     struct sockaddr_in addr = {0};
