@@ -100,9 +100,7 @@ void build_info_packet(game_state_t *g, player_id_t pid, server_packet_t *out)
         case ROUND_TURN:
             info->community_cards[3] = g->community_cards[3];
         case ROUND_FLOP:
-            memcpy(info->community_cards,
-                   g->community_cards,
-                   3 * sizeof(card_t));
+            memcpy(info->community_cards, g->community_cards, 3 * sizeof(card_t));
         default:
             break;
     }
