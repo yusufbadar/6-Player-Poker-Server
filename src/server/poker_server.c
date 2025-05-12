@@ -133,6 +133,7 @@ int main(int argc, char **argv)
                 server_packet_t ack = { .packet_type = ACK };
                 send_pkt(pid, &ack);
                 close(fd);
+
                 game.sockets[pid] = -1;
                 game.player_status[pid] = PLAYER_LEFT;
                 continue;
