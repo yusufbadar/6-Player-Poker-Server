@@ -42,9 +42,9 @@ void reset_game_state(game_state_t *gs) {
     shuffle_deck(gs->deck);
 
     gs->round_stage = ROUND_INIT;
-    gs->next_card   = 0;
+    gs->next_card = 0;
     gs->highest_bet = 0;
-    gs->pot_size    = 0;
+    gs->pot_size = 0;
 
     memset(gs->current_bets, 0, sizeof gs->current_bets);
 
@@ -57,7 +57,6 @@ void reset_game_state(game_state_t *gs) {
         gs->player_hands[p][1] = NOCARD;
     }
 
-    /* wipe the board */
     memset(gs->community_cards, NOCARD, sizeof gs->community_cards);
 }
 
@@ -122,8 +121,9 @@ int main(int argc, char **argv)
         recv(cfd, &join_pkt, sizeof(join_pkt), 0);
         assert(join_pkt.packet_type == JOIN);
     }
-    for (int i = 0; i < NUM_PORTS; ++i) close(server_fds[i]);
-
+    for (int i = 0; i < NUM_PORTS; ++i) {
+        close(server_fds[i]);
+    } 
     while (1) {
         int ready_cnt = 0;
         EACH_PLAYER {
@@ -175,14 +175,14 @@ int main(int argc, char **argv)
             game.current_player = NEXT(game.current_player);
         }
         broadcast_info();
-
         for (int street = 0; street < 4; ++street) {
             memset(street_has_acted, 0, sizeof street_has_acted);
             memset(game.current_bets, 0, sizeof game.current_bets);
             game.highest_bet = 0;
             game.current_player = NEXT(game.dealer_player);
-            while (game.player_status[game.current_player] != PLAYER_ACTIVE)
+            while (game.player_status[game.current_player] != PLAYER_ACTIVE){
                 game.current_player = next_active_player(game.current_player);
+            }
             int num_active = count_active_players();
             int actions_seen = 0;
             bool short_circuit = false;
@@ -229,8 +229,9 @@ int main(int argc, char **argv)
     puts("[Server] Shutting down.");
     for (int i = 0; i < MAX_PLAYERS; ++i) {
         close(server_fds[i]);
-        if (game.player_status[i] != PLAYER_LEFT)
+        if (game.player_status[i] != PLAYER_LEFT) {
             close(game.sockets[i]);
+        }
     }
     return 0;
 }
